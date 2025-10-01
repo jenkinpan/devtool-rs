@@ -1,0 +1,1 @@
+impl for<'a, 'b> Fn(&'a std::path::Path, bool, &'b mut std::option::Option<Bar>) -> std::result::Result<(std::string::String, i32, std::path::PathBuf), anyhow::Error>

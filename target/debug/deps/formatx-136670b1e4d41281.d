@@ -1,0 +1,11 @@
+/Users/jenkin/.local/bin/devtool-rs/target/debug/deps/formatx-136670b1e4d41281.d: /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/lib.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/error.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/format_spec.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/macros.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/placeholder.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/template.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/utils.rs
+
+/Users/jenkin/.local/bin/devtool-rs/target/debug/deps/libformatx-136670b1e4d41281.rmeta: /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/lib.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/error.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/format_spec.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/macros.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/placeholder.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/template.rs /Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/utils.rs
+
+/Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/lib.rs:
+/Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/error.rs:
+/Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/format_spec.rs:
+/Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/macros.rs:
+/Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/placeholder.rs:
+/Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/template.rs:
+/Users/jenkin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/formatx-0.2.4/src/utils.rs:
