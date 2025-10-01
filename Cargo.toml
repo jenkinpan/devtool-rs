@@ -2,6 +2,7 @@
 name = "devtool"
 version = "0.1.6"
 edition = "2021"
+rust-version = "1.90"
 description = "A CLI tool for development in update rustup toolchain , mise maintained tools and hombrew packages."
 repository = "https://github.com/jenkinpan/devtool-rs"
 license = "MIT OR Apache-2.0"
