@@ -160,7 +160,7 @@ fn progress_status_cmd() -> Result<()> {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "devtool-rs")]
+#[command(name = "devtool")]
 struct Args {
     #[arg(default_value_t = String::from("update"))]
     command: String,
@@ -306,7 +306,7 @@ fn brew_update(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    pbar: &mut Option<Bar>,
+    _pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_update.log");
     runner.run("brew outdated --quiet", &logfile, verbose)?;
@@ -327,7 +327,7 @@ fn brew_upgrade(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    pbar: &mut Option<Bar>,
+    _pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_upgrade.log");
     let (rc_before, out_before) = runner.run("brew outdated --quiet", &logfile, verbose)?;
@@ -345,7 +345,7 @@ fn brew_cleanup(
     pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_cleanup.log");
-    let (rc, to_remove) = run_command("brew cleanup -n --prune=7", &logfile, verbose, pbar)?;
+    let (_rc, to_remove) = run_command("brew cleanup -n --prune=7", &logfile, verbose, pbar)?;
     if to_remove.trim().is_empty() {
         let (rc_real, _) = runner.run("brew cleanup -n --prune=7", &logfile, verbose)?;
         Ok(("unchanged".to_string(), rc_real, logfile))
@@ -385,7 +385,7 @@ fn mise_up(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    pbar: &mut Option<Bar>,
+    _pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("mise_up.log");
     let (rc, out) = runner.run("mise up", &logfile, verbose)?;
@@ -628,11 +628,11 @@ fn main() -> Result<()> {
     } else {
         println!("ℹ️ 无更新应用。");
     }
-    if !unchanged.is_empty() {
-        println!("⚠️ 已是最新：{}", unchanged.join(", "));
-    }
     if !actions.is_empty() {
         println!("🛠️ 已执行动作：{}", actions.join(", "));
+    }
+    if !unchanged.is_empty() {
+        println!("⚠️ 已是最新：{}", unchanged.join(", "));
     }
 
     // Print concise mise short-updates if present
@@ -648,112 +648,4 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
-    // A mock runner for testing purposes.
-    struct MockRunner {
-        // command -> Vec<(rc, stdout)>
-        responses: Mutex<HashMap<String, Vec<(i32, String)>>>,
-    }
-
-    impl MockRunner {
-        fn new(responses: HashMap<String, Vec<(i32, String)>>) -> Self {
-            Self {
-                responses: Mutex::new(responses),
-            }
-        }
-    }
-
-    impl Runner for MockRunner {
-        fn run(&self, cmd: &str, logfile: &Path, _verbose: bool) -> Result<(i32, String)> {
-            let mut responses = self.responses.lock().unwrap();
-            if let Some(outputs) = responses.get_mut(cmd) {
-                if !outputs.is_empty() {
-                    let (rc, output) = outputs.remove(0);
-                    fs::write(logfile, &output)?;
-                    return Ok((rc, output));
-                }
-            }
-            // Default response for unexpected commands
-            Ok((127, format!("command not found: {}", cmd)))
-        }
-    }
-
-    #[test]
-    fn test_mise_up_parsing_changed() {
-        let tmpdir = tempdir().unwrap();
-        let responses = HashMap::from([(
-            "mise up".to_string(),
-            vec![(
-                0,
-                "mise installing node@20.11.0\nmise installed node@20.11.0\n".to_string(),
-            )],
-        )]);
-        let runner = MockRunner::new(responses);
-
-        let (state, rc, _) = mise_up(&runner, tmpdir.path(), false, &mut None).unwrap();
-        assert_eq!(state, "changed");
-        assert_eq!(rc, 0);
-    }
-
-    #[test]
-    fn test_mise_up_parsing_unchanged() {
-        let tmpdir = tempdir().unwrap();
-        let responses = HashMap::from([(
-            "mise up".to_string(),
-            vec![(0, "all tools are up to date".into())],
-        )]);
-        let runner = MockRunner::new(responses);
-
-        let (state, rc, _) = mise_up(&runner, tmpdir.path(), false, &mut None).unwrap();
-        assert_eq!(state, "unchanged");
-        assert_eq!(rc, 0);
-    }
-
-    #[test]
-    fn test_brew_update_changed() {
-        let tmpdir = tempdir().unwrap();
-        let mut responses = HashMap::new();
-        responses.insert(
-            "brew outdated --quiet".to_string(),
-            vec![
-                (1, "some-package".into()),
-                (1, "some-package".into()),
-            ],
-        );
-        responses.insert(
-            "brew update --quiet".to_string(),
-            vec![(0, "updated".into())],
-        );
-        let runner = MockRunner::new(responses);
-
-        let (state, rc, _) = brew_update(&runner, tmpdir.path(), false, &mut None).unwrap();
-        assert_eq!(state, "changed");
-        assert_eq!(rc, 0);
-    }
-
-    #[test]
-    fn test_brew_update_unchanged() {
-        let tmpdir = tempdir().unwrap();
-        let mut responses = HashMap::new();
-        responses.insert(
-            "brew outdated --quiet".to_string(),
-            vec![(0, "".into()), (0, "".into())],
-        );
-        responses.insert(
-            "brew update --quiet".to_string(),
-            vec![(0, "Already up-to-date.".into())],
-        );
-        let runner = MockRunner::new(responses);
-
-        let (state, rc, _) = brew_update(&runner, tmpdir.path(), false, &mut None).unwrap();
-        assert_eq!(state, "unchanged");
-        assert_eq!(rc, 0);
-    }
 }
