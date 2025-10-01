@@ -70,8 +70,8 @@ fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
         serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
     );
     if let Some(pb) = pbar.as_mut() {
-        let _ = pb.set_description(desc.to_string());
-        let _ = pb.update_to(0usize);
+        let _: () = pb.set_description(desc.to_string());
+        let _: () = pb.update_to(0usize);
     }
 }
 
@@ -99,8 +99,8 @@ fn progress_update(percent: i32, done: u64, total: u64, desc: &str, pbar: &mut O
             desc_short.truncate(37);
             desc_short.push_str("...");
         }
-        let _ = pb.set_description(desc_short);
-        let _ = pb.update_to(done as usize);
+        let _: () = pb.set_description(desc_short);
+        let _: () = pb.update_to(done as usize);
     }
 }
 
@@ -134,7 +134,7 @@ fn progress_finish() {
         &status_file,
         serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
     );
-    print!("\n"); // 为下一行输出准备
+    println!(); // 为下一行输出准备
 }
 
 fn progress_status_cmd() -> Result<()> {
