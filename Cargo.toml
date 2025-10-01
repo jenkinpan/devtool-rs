@@ -2,6 +2,7 @@
 name = "devtool"
 version = "0.1.0"
 edition = "2021"
+description = "A CLI tool for development in update rustup toolchain , mise maintained tools and hombrew packages."
 
 [dependencies]
 anyhow = "1"
@@ -16,4 +17,3 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tempfile = "3"
 which = "8"
-
