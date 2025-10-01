@@ -1,42 +1,33 @@
 use anyhow::{Context, Result};
 use atty;
 use clap::Parser;
-use kdam::{tqdm, Bar as KdamBar, BarExt};
+use kdam::{Bar as KdamBar, BarExt};
 use std::io::{self, Write};
 
 struct Bar {
-    desc: String,
     last_done: usize,
     pb: KdamBar,
 }
 
 impl Bar {
     fn new(total: usize, desc: &str) -> Self {
-        let pb = tqdm!(
-            total = total,
-            desc = desc.to_string(),
-            position = 0,
-            unit = " steps",
-            leave = false,
-            dynamic_ncols = true
-        );
+        let mut pb = KdamBar::new(total);
+        pb.set_description(desc);
+        pb.unit = " steps".to_owned();
+        pb.leave = false;
+        pb.dynamic_ncols = true;
 
-        Bar {
-            desc: desc.to_string(),
-            last_done: 0,
-            pb,
-        }
+        Bar { last_done: 0, pb }
     }
 
     fn set_description(&mut self, d: String) {
-        self.desc = d.clone();
         self.pb.set_description(&d);
     }
 
     fn update_to(&mut self, done: usize) {
-        let delta = done as i64 - self.last_done as i64;
+        let delta = done.saturating_sub(self.last_done);
         if delta > 0 {
-            let _ = self.pb.update(delta as usize);
+            let _ = self.pb.update(delta);
         }
         self.last_done = done;
     }
@@ -70,8 +61,8 @@ fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
         serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
     );
     if let Some(pb) = pbar.as_mut() {
-        let _: () = pb.set_description(desc.to_string());
-        let _: () = pb.update_to(0usize);
+        pb.set_description(desc.to_string());
+        pb.update_to(0);
     }
 }
 
@@ -99,8 +90,8 @@ fn progress_update(percent: i32, done: u64, total: u64, desc: &str, pbar: &mut O
             desc_short.truncate(37);
             desc_short.push_str("...");
         }
-        let _: () = pb.set_description(desc_short);
-        let _: () = pb.update_to(done as usize);
+        pb.set_description(desc_short);
+        pb.update_to(done as usize);
     }
 }
 
