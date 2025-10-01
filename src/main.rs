@@ -309,10 +309,13 @@ fn brew_update(
     pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_update.log");
-    let (rc_before, _out_before) = runner.run("brew outdated --quiet", &logfile, verbose)?;
-    let (rc_update, _out_update) = runner.run("brew update --quiet", &logfile, verbose)?;
-    let (rc_after, _out_after) = runner.run("brew outdated --quiet", &logfile, verbose)?;
-    let state = if rc_update == 0 && rc_before == rc_after {
+    runner.run("brew outdated --quiet", &logfile, verbose)?;
+    let (rc_update, out_update) = runner.run("brew update --quiet", &logfile, verbose)?;
+    runner.run("brew outdated --quiet", &logfile, verbose)?;
+
+    let state = if rc_update != 0 {
+        "failed"
+    } else if out_update.contains("Already up-to-date.") {
         "unchanged"
     } else {
         "changed"
@@ -655,12 +658,12 @@ mod tests {
 
     // A mock runner for testing purposes.
     struct MockRunner {
-        // command -> (rc, stdout)
-        responses: Mutex<HashMap<String, (i32, String)>>,
+        // command -> Vec<(rc, stdout)>
+        responses: Mutex<HashMap<String, Vec<(i32, String)>>>,
     }
 
     impl MockRunner {
-        fn new(responses: HashMap<String, (i32, String)>) -> Self {
+        fn new(responses: HashMap<String, Vec<(i32, String)>>) -> Self {
             Self {
                 responses: Mutex::new(responses),
             }
@@ -670,13 +673,15 @@ mod tests {
     impl Runner for MockRunner {
         fn run(&self, cmd: &str, logfile: &Path, _verbose: bool) -> Result<(i32, String)> {
             let mut responses = self.responses.lock().unwrap();
-            if let Some((rc, output)) = responses.remove(cmd) {
-                fs::write(logfile, &output)?;
-                Ok((rc, output))
-            } else {
-                // Default response for unexpected commands
-                Ok((127, format!("command not found: {}", cmd)))
+            if let Some(outputs) = responses.get_mut(cmd) {
+                if !outputs.is_empty() {
+                    let (rc, output) = outputs.remove(0);
+                    fs::write(logfile, &output)?;
+                    return Ok((rc, output));
+                }
             }
+            // Default response for unexpected commands
+            Ok((127, format!("command not found: {}", cmd)))
         }
     }
 
@@ -685,10 +690,10 @@ mod tests {
         let tmpdir = tempdir().unwrap();
         let responses = HashMap::from([(
             "mise up".to_string(),
-            (
+            vec![(
                 0,
                 "mise installing node@20.11.0\nmise installed node@20.11.0\n".to_string(),
-            ),
+            )],
         )]);
         let runner = MockRunner::new(responses);
 
@@ -702,7 +707,7 @@ mod tests {
         let tmpdir = tempdir().unwrap();
         let responses = HashMap::from([(
             "mise up".to_string(),
-            (0, "all tools are up to date".into()),
+            vec![(0, "all tools are up to date".into())],
         )]);
         let runner = MockRunner::new(responses);
 
@@ -714,18 +719,18 @@ mod tests {
     #[test]
     fn test_brew_update_changed() {
         let tmpdir = tempdir().unwrap();
-        let responses = HashMap::from([
-            (
-                "brew outdated --quiet".to_string(),
+        let mut responses = HashMap::new();
+        responses.insert(
+            "brew outdated --quiet".to_string(),
+            vec![
                 (1, "some-package".into()),
-            ), // rc=1 means outdated packages exist
-            ("brew update --quiet".to_string(), (0, "updated".into())),
-            // After update, let's say there are still outdated packages
-            (
-                "brew outdated --quiet".to_string(),
                 (1, "some-package".into()),
-            ),
-        ]);
+            ],
+        );
+        responses.insert(
+            "brew update --quiet".to_string(),
+            vec![(0, "updated".into())],
+        );
         let runner = MockRunner::new(responses);
 
         let (state, rc, _) = brew_update(&runner, tmpdir.path(), false, &mut None).unwrap();
@@ -736,14 +741,15 @@ mod tests {
     #[test]
     fn test_brew_update_unchanged() {
         let tmpdir = tempdir().unwrap();
-        let responses = HashMap::from([
-            ("brew outdated --quiet".to_string(), (0, "".into())), // rc=0 means no outdated packages
-            (
-                "brew update --quiet".to_string(),
-                (0, "Already up-to-date.".into()),
-            ),
-            ("brew outdated --quiet".to_string(), (0, "".into())),
-        ]);
+        let mut responses = HashMap::new();
+        responses.insert(
+            "brew outdated --quiet".to_string(),
+            vec![(0, "".into()), (0, "".into())],
+        );
+        responses.insert(
+            "brew update --quiet".to_string(),
+            vec![(0, "Already up-to-date.".into())],
+        );
         let runner = MockRunner::new(responses);
 
         let (state, rc, _) = brew_update(&runner, tmpdir.path(), false, &mut None).unwrap();
