@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use kdam::{Bar as KdamBar, BarExt};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,30 +13,33 @@ use which::which;
 
 struct Bar {
     last_done: usize,
-    pb: KdamBar,
+    total: usize,
 }
 
 impl Bar {
-    fn new(total: usize, desc: &str) -> Self {
-        let mut pb = KdamBar::new(total);
-        pb.set_description(desc);
-        pb.unit = " steps".to_owned();
-        pb.leave = false;
-        pb.dynamic_ncols = true;
-
-        Bar { last_done: 0, pb }
+    fn new(total: usize, _desc: &str) -> Self {
+        Bar { last_done: 0, total }
     }
 
-    fn set_description(&mut self, d: String) {
-        self.pb.set_description(&d);
+    fn set_description(&mut self, _d: String) {
+        // 不再需要 kdam 的 set_description
     }
 
-    fn update_to(&mut self, done: usize) {
-        let delta = done.saturating_sub(self.last_done);
-        if delta > 0 {
-            let _ = self.pb.update(delta);
-        }
+    fn update_to(&mut self, done: usize, current_step: &str) {
         self.last_done = done;
+        
+        // 显示自定义格式的进度条
+        let percent = if self.total > 0 { (done * 100) / self.total } else { 0 };
+        let bar_width = 40;
+        let filled = (done * bar_width) / self.total.max(1);
+        let bar = "=".repeat(filled) + &" ".repeat(bar_width - filled);
+        
+        // 构建进度条字符串，确保长度一致以覆盖之前的内容
+        let progress_line = format!("[{}] {}/{} ({}%) | {}", bar, done, self.total, percent, current_step);
+        
+        // 使用回车符回到行首，然后输出新内容，用空格填充到足够长度
+        print!("\r{:<100}", progress_line);
+        io::stdout().flush().ok();
     }
 }
 fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
@@ -61,7 +63,7 @@ fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
     );
     if let Some(pb) = pbar.as_mut() {
         pb.set_description(desc.to_string());
-        pb.update_to(0);
+        // 不在这里调用 update_to，避免重复输出
     }
 }
 
@@ -89,8 +91,8 @@ fn progress_update(percent: i32, done: u64, total: u64, desc: &str, pbar: &mut O
             desc_short.truncate(37);
             desc_short.push_str("...");
         }
-        pb.set_description(desc_short);
-        pb.update_to(done as usize);
+        pb.set_description(desc_short.clone());
+        // 不在这里更新进度条，避免重复输出，由主循环统一管理
     }
 }
 
@@ -445,7 +447,7 @@ fn main() -> Result<()> {
     if !args.no_banner {
         println!(
             "🚀 开始 devtool 更新（Rust 版本）：{}",
-            chrono::Local::now()
+            chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
         );
     }
 
@@ -497,11 +499,7 @@ fn main() -> Result<()> {
     let run_tmp = tmp.path().to_path_buf();
 
     // progress bar (simple single-line Bar)
-    let mut pb_opt = if args.compact || atty::is(atty::Stream::Stdout) {
-        Some(Bar::new(total, "devtool"))
-    } else {
-        None
-    };
+    let mut pb_opt = Some(Bar::new(total, "devtool"));
 
     // Always print the numbered steps so the user sees what's going to run.
     println!("📋 将执行 {} 个步骤：", total);
@@ -509,9 +507,12 @@ fn main() -> Result<()> {
         println!("  {}) {}", i + 1, s.desc);
     }
 
-    // Start external progress helper (if not dry-run)
-    if !args.dry_run {
-        progress_start(total as u64, "devtool", &mut pb_opt);
+    // Start external progress helper
+    progress_start(total as u64, "devtool", &mut pb_opt);
+    
+    // 初始化进度条显示
+    if let Some(pb) = pb_opt.as_mut() {
+        pb.update_to(0, "准备开始");
     }
 
     let mut succ: Vec<&str> = Vec::new();
@@ -598,20 +599,28 @@ fn main() -> Result<()> {
         }
 
         // update external progress helper (this also updates the local bar)
-        if !args.dry_run {
-            let done_count = (idx + 1) as u64;
-            let percent = (100 * (idx + 1) / total) as i32;
-            progress_update(percent, done_count, total as u64, step.desc, &mut pb_opt);
+        let done_count = (idx + 1) as u64;
+        let percent = (100 * (idx + 1) / total) as i32;
+        progress_update(percent, done_count, total as u64, step.desc, &mut pb_opt);
+        
+        // 直接更新进度条显示
+        if let Some(pb) = pb_opt.as_mut() {
+            pb.update_to(done_count as usize, step.desc);
         }
+        
     }
 
     // finish progress helper
+    // 显示最终的完成进度条
+    if let Some(pb) = pb_opt.as_mut() {
+        pb.update_to(total, "完成");
+    }
+    println!(); // 换行
     if !args.dry_run {
-        print!("\x1B[2K"); // 清除当前行
         progress_finish();
     }
 
-    println!("\n🎉 更新完成：{}", chrono::Local::now());
+    println!("\n🎉 更新完成：{}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
     if !updated.is_empty() {
         println!("✅ 已更新：{}", updated.join(", "));
     } else {
