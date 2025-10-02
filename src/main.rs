@@ -11,6 +11,12 @@ use std::process::{Command, Stdio};
 use tempfile::tempdir;
 use which::which;
 
+fn get_cache_dir() -> PathBuf {
+    dirs::cache_dir()
+        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .join("devtool")
+}
+
 struct Bar {
     last_done: usize,
     total: usize,
@@ -66,9 +72,7 @@ impl Drop for Bar {
 }
 fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
     // write a structured status file to cache dir
-    let cache_dir = dirs::cache_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("devtool");
+    let cache_dir = get_cache_dir();
     let _ = fs::create_dir_all(&cache_dir);
     let status_file = cache_dir.join("progress.status");
     let ps = ProgressStatus {
@@ -90,9 +94,7 @@ fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
 }
 
 fn progress_update(percent: i32, done: u64, total: u64, desc: &str, pbar: &mut Option<Bar>) {
-    let cache_dir = dirs::cache_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("devtool");
+    let cache_dir = get_cache_dir();
     let _ = fs::create_dir_all(&cache_dir);
     let status_file = cache_dir.join("progress.status");
     let ps = ProgressStatus {
@@ -129,9 +131,7 @@ struct ProgressStatus {
 }
 
 fn progress_finish() {
-    let cache_dir = dirs::cache_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("devtool");
+    let cache_dir = get_cache_dir();
     let _ = fs::create_dir_all(&cache_dir);
     let status_file = cache_dir.join("progress.status");
     let ps = ProgressStatus {
@@ -150,9 +150,7 @@ fn progress_finish() {
 }
 
 fn progress_status_cmd() -> Result<()> {
-    let cache_dir = dirs::cache_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("devtool");
+    let cache_dir = get_cache_dir();
     let status_file = cache_dir.join("progress.status");
     if !status_file.exists() {
         println!("No progress.status file: {:?}", status_file);
@@ -316,8 +314,6 @@ fn run_command(
 }
 
 fn analyze_brew_upgrades(versions_before: &str, versions_after: &str) -> Vec<String> {
-    use std::collections::HashMap;
-
     // 解析版本信息到 HashMap
     let mut before_map: HashMap<String, String> = HashMap::new();
     let mut after_map: HashMap<String, String> = HashMap::new();
@@ -351,7 +347,7 @@ fn analyze_brew_upgrades(versions_before: &str, versions_after: &str) -> Vec<Str
 }
 
 fn parse_brew_version_line(line: &str) -> Option<(String, String)> {
-    let parts: Vec<&str> = line.trim().split_whitespace().collect();
+    let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() >= 2 {
         let name = parts[0].to_string();
         let version = parts[1].to_string();
@@ -444,7 +440,7 @@ fn brew_upgrade(
     // 将升级详情写入文件供主程序读取
     if !upgrade_details.is_empty() {
         let details_file = tmpdir.join("brew_upgrade_details.txt");
-        if let Ok(mut file) = std::fs::File::create(&details_file) {
+        if let Ok(mut file) = File::create(&details_file) {
             for detail in &upgrade_details {
                 let _ = writeln!(file, "{}", detail);
             }
@@ -523,7 +519,7 @@ fn rustup_update(
 
         if let (Some(before), Some(after)) = (before_version, after_version) {
             let details_file = tmpdir.join("rustup_upgrade_details.txt");
-            if let Ok(mut file) = std::fs::File::create(&details_file) {
+            if let Ok(mut file) = File::create(&details_file) {
                 let _ = writeln!(file, "rustc: {} → {}", before, after);
             }
         }
@@ -543,12 +539,11 @@ fn extract_rust_version(version_output: &str) -> Option<String> {
 }
 
 fn parse_mise_versions(output: &str) -> HashMap<String, String> {
-    use std::collections::HashMap;
     let mut versions = HashMap::new();
 
-    // 尝试解析 JSON 格式（mise ls --current --json）
-    if output.trim().starts_with('[') || output.trim().starts_with('{') {
-        // JSON 格式，暂时跳过复杂解析，使用文本格式
+    // 跳过 JSON 格式，只使用文本格式（更简单可靠）
+    if output.trim().starts_with('{') {
+        // JSON 解析较复杂，当前使用文本格式命令
         return versions;
     }
 
@@ -556,7 +551,11 @@ fn parse_mise_versions(output: &str) -> HashMap<String, String> {
     // 或: "node@22.20.0"
     for line in output.lines() {
         let line = line.trim();
-        if line.is_empty() {
+        if line.is_empty()
+            || line.starts_with('{')
+            || line.starts_with('}')
+            || line.starts_with('"')
+        {
             continue;
         }
 
@@ -575,12 +574,15 @@ fn parse_mise_versions(output: &str) -> HashMap<String, String> {
             continue;
         }
 
-        // 尝试解析空格分隔的格式
+        // 尝试解析空格分隔的格式: "node    24.9.0  ~/.config/mise/config.toml  latest"
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             let name = parts[0].to_string();
             let version = parts[1].to_string();
-            versions.insert(name, version);
+            // 确保版本看起来像版本号（包含数字和点）
+            if version.contains(|c: char| c.is_numeric()) {
+                versions.insert(name, version);
+            }
         }
     }
 
@@ -595,23 +597,17 @@ fn mise_up(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("mise_up.log");
 
-    // 获取升级前的版本信息
-    let (_, versions_before) = runner.run(
-        "mise ls --current --json 2>/dev/null || mise ls --current",
-        &tmpdir.join("mise_before.log"),
-        false,
-    )?;
+    // 获取升级前的版本信息（使用文本格式，更容易解析）
+    let (_, versions_before) =
+        runner.run("mise ls --current", &tmpdir.join("mise_before.log"), false)?;
 
     // 执行更新
     let (rc, out) = runner.run("mise up", &logfile, verbose)?;
     let outl = out.to_lowercase();
 
     // 获取升级后的版本信息
-    let (_, versions_after) = runner.run(
-        "mise ls --current --json 2>/dev/null || mise ls --current",
-        &tmpdir.join("mise_after.log"),
-        false,
-    )?;
+    let (_, versions_after) =
+        runner.run("mise ls --current", &tmpdir.join("mise_after.log"), false)?;
 
     // Consider 'changed' only when we see explicit install/update markers or version patterns
     let install_markers = ["install", "installed", "upgraded", "updated", "->", "→"];
@@ -651,6 +647,30 @@ fn mise_up(
                 concise.push(format!("{}: {}", name, after_ver));
             }
         }
+
+        // 如果版本比较没有找到变化，但输出显示有更新，则从输出中提取信息
+        if concise.is_empty() && !short_entries.is_empty() {
+            for (name, vers) in &short_entries {
+                let mut seen: Vec<String> = Vec::new();
+                for v in vers {
+                    if !seen.contains(v) {
+                        seen.push(v.clone());
+                    }
+                }
+                if seen.len() >= 2 {
+                    // 假设第一个是旧版本，最后一个是新版本
+                    concise.push(format!(
+                        "{}: {} → {}",
+                        name,
+                        seen.first().unwrap(),
+                        seen.last().unwrap()
+                    ));
+                } else if seen.len() == 1 {
+                    concise.push(format!("{}: {}", name, seen[0]));
+                }
+            }
+        }
+
         if !concise.is_empty() {
             let shortfile = tmpdir.join("mise_short_updates.txt");
             let f = File::create(&shortfile).ok();
@@ -809,8 +829,7 @@ fn main() -> Result<()> {
 
         // Optionally keep logs
         if args.keep_logs {
-            let cache_dir = dirs::cache_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
-            let devcache = cache_dir.join("devtool");
+            let devcache = get_cache_dir();
             fs::create_dir_all(&devcache)?;
             let dest = devcache.join(
                 logfile
