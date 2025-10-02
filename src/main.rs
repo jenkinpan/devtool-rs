@@ -1,8 +1,16 @@
 use anyhow::{Context, Result};
-use atty;
 use clap::Parser;
 use kdam::{Bar as KdamBar, BarExt};
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs::{self, File};
+use std::io::Read;
 use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use tempfile::tempdir;
+use which::which;
 
 struct Bar {
     last_done: usize,
@@ -32,15 +40,6 @@ impl Bar {
         self.last_done = done;
     }
 }
-use regex::Regex;
-use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use tempfile::tempdir;
-use which::which;
-
 fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
     // write a structured status file to cache dir
     let cache_dir = dirs::cache_dir()
@@ -94,8 +93,6 @@ fn progress_update(percent: i32, done: u64, total: u64, desc: &str, pbar: &mut O
         pb.update_to(done as usize);
     }
 }
-
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ProgressStatus {
@@ -170,10 +167,11 @@ struct Args {
     #[arg(long = "compact")]
     compact: bool,
 }
+type StepFn = fn(&dyn Runner, &Path, bool, &mut Option<Bar>) -> Result<(String, i32, PathBuf)>;
 
 struct Step {
     desc: &'static str,
-    fn_name: fn(&dyn Runner, &Path, bool, &mut Option<Bar>) -> Result<(String, i32, PathBuf)>,
+    fn_name: StepFn,
 }
 
 /// A trait for running commands, allowing for mocking in tests.
