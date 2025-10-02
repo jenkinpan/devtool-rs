@@ -310,17 +310,37 @@ fn brew_update(
     _pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_update.log");
-    runner.run("brew outdated --quiet", &logfile, verbose)?;
-    let (rc_update, out_update) = runner.run("brew update --quiet", &logfile, verbose)?;
-    runner.run("brew outdated --quiet", &logfile, verbose)?;
 
-    let state = if rc_update != 0 {
-        "failed"
+    // 获取更新前的 git commit hash
+    let (_, commit_before) = runner.run(
+        "cd $(brew --repository) && git log -1 --format='%H' 2>/dev/null || echo 'unknown'",
+        &logfile,
+        verbose,
+    )?;
+
+    // 执行更新
+    let (rc_update, out_update) = runner.run("brew update --quiet", &logfile, verbose)?;
+
+    if rc_update != 0 {
+        return Ok(("failed".to_string(), rc_update, logfile));
+    }
+
+    // 获取更新后的 git commit hash
+    let (_, commit_after) = runner.run(
+        "cd $(brew --repository) && git log -1 --format='%H' 2>/dev/null || echo 'unknown'",
+        &logfile,
+        verbose,
+    )?;
+
+    let state = if commit_before.trim() == commit_after.trim() && commit_before.trim() != "unknown"
+    {
+        "unchanged"
     } else if out_update.contains("Already up-to-date.") {
         "unchanged"
     } else {
         "changed"
     };
+
     Ok((state.to_string(), rc_update, logfile))
 }
 
