@@ -454,10 +454,13 @@ fn main() -> Result<()> {
         return progress_status_cmd();
     }
 
+    // 记录开始时间
+    let start_time = chrono::Local::now();
+
     if !args.no_banner {
         println!(
             "🚀 开始 devtool 更新：{}",
-            chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+            start_time.format("%Y-%m-%d %H:%M:%S")
         );
     }
 
@@ -629,9 +632,30 @@ fn main() -> Result<()> {
         progress_finish();
     }
 
+    // 计算总耗时
+    let end_time = chrono::Local::now();
+    let duration = end_time.signed_duration_since(start_time);
+    let duration_str = if duration.num_seconds() < 60 {
+        format!("{}秒", duration.num_seconds())
+    } else if duration.num_minutes() < 60 {
+        format!(
+            "{}分{}秒",
+            duration.num_minutes(),
+            duration.num_seconds() % 60
+        )
+    } else {
+        format!(
+            "{}小时{}分{}秒",
+            duration.num_hours(),
+            duration.num_minutes() % 60,
+            duration.num_seconds() % 60
+        )
+    };
+
     println!(
-        "\n🎉 更新完成：{}",
-        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+        "\n🎉 更新完成：{} (耗时: {})",
+        end_time.format("%Y-%m-%d %H:%M:%S"),
+        duration_str
     );
     if !updated.is_empty() {
         println!("✅ 已更新：{}", updated.join(", "));
