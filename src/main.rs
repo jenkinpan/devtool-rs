@@ -542,6 +542,51 @@ fn extract_rust_version(version_output: &str) -> Option<String> {
     }
 }
 
+fn parse_mise_versions(output: &str) -> HashMap<String, String> {
+    use std::collections::HashMap;
+    let mut versions = HashMap::new();
+
+    // 尝试解析 JSON 格式（mise ls --current --json）
+    if output.trim().starts_with('[') || output.trim().starts_with('{') {
+        // JSON 格式，暂时跳过复杂解析，使用文本格式
+        return versions;
+    }
+
+    // 解析文本格式: "node    22.20.0  ~/.tool-versions 22.20.0"
+    // 或: "node@22.20.0"
+    for line in output.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        // 尝试解析 "tool@version" 格式
+        if let Some((name, version)) = line.split_once('@') {
+            let name = name.trim().to_string();
+            let version = version
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_string();
+            if !version.is_empty() {
+                versions.insert(name, version);
+            }
+            continue;
+        }
+
+        // 尝试解析空格分隔的格式
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 2 {
+            let name = parts[0].to_string();
+            let version = parts[1].to_string();
+            versions.insert(name, version);
+        }
+    }
+
+    versions
+}
+
 fn mise_up(
     runner: &dyn Runner,
     tmpdir: &Path,
@@ -549,13 +594,31 @@ fn mise_up(
     _pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("mise_up.log");
+
+    // 获取升级前的版本信息
+    let (_, versions_before) = runner.run(
+        "mise ls --current --json 2>/dev/null || mise ls --current",
+        &tmpdir.join("mise_before.log"),
+        false,
+    )?;
+
+    // 执行更新
     let (rc, out) = runner.run("mise up", &logfile, verbose)?;
     let outl = out.to_lowercase();
+
+    // 获取升级后的版本信息
+    let (_, versions_after) = runner.run(
+        "mise ls --current --json 2>/dev/null || mise ls --current",
+        &tmpdir.join("mise_after.log"),
+        false,
+    )?;
+
     // Consider 'changed' only when we see explicit install/update markers or version patterns
     let install_markers = ["install", "installed", "upgraded", "updated", "->", "→"];
     let version_pat = Regex::new(r"[a-zA-Z0-9_+\-.]+@[0-9]+(?:\.[0-9]+)+").unwrap();
     let mut short_entries: HashMap<String, Vec<String>> = HashMap::new();
-    // collect explicit name@version tokens
+
+    // collect explicit name@version tokens from output
     for cap in version_pat.captures_iter(&out) {
         if let Some(m) = cap.get(0) {
             let s = m.as_str().to_string();
@@ -570,24 +633,22 @@ fn mise_up(
 
     // If we detected versions or install markers, consider changed and write concise summary
     if install_markers.iter().any(|k| outl.contains(k)) || !short_entries.is_empty() {
+        // Parse before and after versions for accurate comparison
+        let before_versions = parse_mise_versions(&versions_before);
+        let after_versions = parse_mise_versions(&versions_after);
+
         // write concise short updates to a temp file for main to read
         let mut concise: Vec<String> = Vec::new();
-        for (name, vers) in &short_entries {
-            let mut seen: Vec<String> = Vec::new();
-            for v in vers {
-                if !seen.contains(v) {
-                    seen.push(v.clone());
+
+        // Compare versions to find upgrades
+        for (name, after_ver) in &after_versions {
+            if let Some(before_ver) = before_versions.get(name) {
+                if before_ver != after_ver {
+                    concise.push(format!("{}: {} → {}", name, before_ver, after_ver));
                 }
-            }
-            if seen.len() >= 2 {
-                concise.push(format!(
-                    "{}: {} → {}",
-                    name,
-                    seen.first().unwrap(),
-                    seen.last().unwrap()
-                ));
-            } else if seen.len() == 1 {
-                concise.push(format!("{}: {}", name, seen[0]));
+            } else {
+                // New installation
+                concise.push(format!("{}: {}", name, after_ver));
             }
         }
         if !concise.is_empty() {
