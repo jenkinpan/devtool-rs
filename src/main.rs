@@ -18,6 +18,10 @@ struct Bar {
 
 impl Bar {
     fn new(total: usize, _desc: &str) -> Self {
+        // 隐藏光标
+        print!("\x1b[?25l");
+        io::stdout().flush().ok();
+
         Bar {
             last_done: 0,
             total,
@@ -49,6 +53,14 @@ impl Bar {
 
         // 使用回车符回到行首，然后输出新内容，用空格填充到足够长度
         print!("\r{:<100}", progress_line);
+        io::stdout().flush().ok();
+    }
+}
+
+impl Drop for Bar {
+    fn drop(&mut self) {
+        // 显示光标
+        print!("\x1b[?25h");
         io::stdout().flush().ok();
     }
 }
@@ -303,6 +315,52 @@ fn run_command(
     Ok((rc, short))
 }
 
+fn analyze_brew_upgrades(versions_before: &str, versions_after: &str) -> Vec<String> {
+    use std::collections::HashMap;
+
+    // 解析版本信息到 HashMap
+    let mut before_map: HashMap<String, String> = HashMap::new();
+    let mut after_map: HashMap<String, String> = HashMap::new();
+
+    // 解析升级前的版本
+    for line in versions_before.lines() {
+        if let Some((name, version)) = parse_brew_version_line(line) {
+            before_map.insert(name, version);
+        }
+    }
+
+    // 解析升级后的版本
+    for line in versions_after.lines() {
+        if let Some((name, version)) = parse_brew_version_line(line) {
+            after_map.insert(name, version);
+        }
+    }
+
+    // 找出升级的软件包
+    let mut upgrades = Vec::new();
+    for (name, after_version) in &after_map {
+        if let Some(before_version) = before_map.get(name) {
+            if before_version != after_version {
+                upgrades.push(format!("{}: {} → {}", name, before_version, after_version));
+            }
+        }
+    }
+
+    upgrades.sort();
+    upgrades
+}
+
+fn parse_brew_version_line(line: &str) -> Option<(String, String)> {
+    let parts: Vec<&str> = line.trim().split_whitespace().collect();
+    if parts.len() >= 2 {
+        let name = parts[0].to_string();
+        let version = parts[1].to_string();
+        Some((name, version))
+    } else {
+        None
+    }
+}
+
 fn brew_update(
     runner: &dyn Runner,
     tmpdir: &Path,
@@ -352,12 +410,54 @@ fn brew_upgrade(
     _pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_upgrade.log");
-    let (rc_before, out_before) = runner.run("brew outdated --quiet", &logfile, verbose)?;
-    if out_before.trim().is_empty() {
-        return Ok(("unchanged".to_string(), rc_before, logfile));
+
+    // 获取过时软件的详细信息（JSON格式）
+    let (rc_outdated, out_outdated) = runner.run("brew outdated --json", &logfile, verbose)?;
+    if rc_outdated != 0 || out_outdated.trim().is_empty() {
+        return Ok(("unchanged".to_string(), rc_outdated, logfile));
     }
-    let (rc2, _out_upgrade) = runner.run("brew upgrade --quiet", &logfile, verbose)?;
-    Ok(("changed".to_string(), rc2, logfile))
+
+    // 解析JSON以检查是否真的有过时的软件
+    let has_outdated = out_outdated.contains("\"formulae\":[")
+        && (!out_outdated.contains("\"formulae\":[]") || !out_outdated.contains("\"casks\":[]"));
+
+    if !has_outdated {
+        return Ok(("unchanged".to_string(), 0, logfile));
+    }
+
+    // 记录升级前的版本信息
+    let (_, versions_before) = runner.run("brew list --versions", &logfile, verbose)?;
+
+    // 执行升级
+    let (rc_upgrade, _out_upgrade) = runner.run("brew upgrade --quiet", &logfile, verbose)?;
+
+    if rc_upgrade != 0 {
+        return Ok(("failed".to_string(), rc_upgrade, logfile));
+    }
+
+    // 记录升级后的版本信息
+    let (_, versions_after) = runner.run("brew list --versions", &logfile, verbose)?;
+
+    // 分析升级的软件包
+    let upgrade_details = analyze_brew_upgrades(&versions_before, &versions_after);
+
+    // 将升级详情写入文件供主程序读取
+    if !upgrade_details.is_empty() {
+        let details_file = tmpdir.join("brew_upgrade_details.txt");
+        if let Ok(mut file) = std::fs::File::create(&details_file) {
+            for detail in &upgrade_details {
+                let _ = writeln!(file, "{}", detail);
+            }
+        }
+    }
+
+    let state = if upgrade_details.is_empty() {
+        "unchanged"
+    } else {
+        "changed"
+    };
+
+    Ok((state.to_string(), rc_upgrade, logfile))
 }
 
 fn brew_cleanup(
@@ -384,10 +484,21 @@ fn rustup_update(
     pbar: &mut Option<Bar>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("rustup_update.log");
-    let (_rc_b, _out_b) = runner.run("rustc --version", &tmpdir.join("rustc_before.log"), false)?;
 
+    // 获取更新前的版本信息
+    let (_, version_before) =
+        runner.run("rustc --version", &tmpdir.join("rustc_before.log"), false)?;
+    let version_before = version_before.trim().to_string();
+
+    // 执行更新
     let (rc, out) = runner.run("rustup update stable", &logfile, verbose)?;
-    let (_rc_a, _out_a) = run_command(
+
+    if rc != 0 {
+        return Ok(("failed".to_string(), rc, logfile));
+    }
+
+    // 获取更新后的版本信息
+    let (_, version_after) = run_command(
         "rustc --version",
         &tmpdir.join("rustc_after.log"),
         false,
@@ -395,11 +506,39 @@ fn rustup_update(
     )
     .ok()
     .unwrap_or((1, String::new()));
+    let version_after = version_after.trim().to_string();
+
+    // 检查版本是否真的有变化
     let out_text = out.to_lowercase();
-    if out_text.contains("unchanged") || out_text.contains("up to date") || rc != 0 {
+    let is_unchanged = out_text.contains("unchanged")
+        || out_text.contains("up to date")
+        || version_before == version_after;
+
+    if is_unchanged {
         Ok(("unchanged".to_string(), rc, logfile))
     } else {
+        // 解析版本信息并保存升级详情
+        let before_version = extract_rust_version(&version_before);
+        let after_version = extract_rust_version(&version_after);
+
+        if let (Some(before), Some(after)) = (before_version, after_version) {
+            let details_file = tmpdir.join("rustup_upgrade_details.txt");
+            if let Ok(mut file) = std::fs::File::create(&details_file) {
+                let _ = writeln!(file, "rustc: {} → {}", before, after);
+            }
+        }
+
         Ok(("changed".to_string(), rc, logfile))
+    }
+}
+
+fn extract_rust_version(version_output: &str) -> Option<String> {
+    // 从 "rustc 1.90.0 (1159e78c4 2025-09-14)" 提取 "1.90.0"
+    let parts: Vec<&str> = version_output.split_whitespace().collect();
+    if parts.len() >= 2 && parts[0] == "rustc" {
+        Some(parts[1].to_string())
+    } else {
+        None
     }
 }
 
@@ -455,7 +594,10 @@ fn mise_up(
             let shortfile = tmpdir.join("mise_short_updates.txt");
             let f = File::create(&shortfile).ok();
             if let Some(mut fh) = f {
-                let _ = writeln!(fh, "{}", concise.join(", "));
+                // 每个工具一行，与 Homebrew 和 Rustup 保持一致
+                for entry in &concise {
+                    let _ = writeln!(fh, "{}", entry);
+                }
             }
         }
         if rc == 0 {
@@ -623,13 +765,39 @@ fn main() -> Result<()> {
         let mise_short = run_tmp.join("mise_short_updates.txt");
         if mise_short.exists() {
             if let Ok(s) = fs::read_to_string(&mise_short) {
-                let val = s.trim().to_string();
-                if !val.is_empty() {
-                    short_updates.insert(step.desc.to_string(), vec![val.clone()]);
+                let details: Vec<String> = s.lines().map(|line| line.trim().to_string()).collect();
+                if !details.is_empty() {
+                    short_updates.insert(step.desc.to_string(), details);
                 }
             }
             // remove after reading
             let _ = fs::remove_file(&mise_short);
+        }
+
+        // If the step wrote a brew upgrade details file into tmpdir, read and record it
+        let brew_details = run_tmp.join("brew_upgrade_details.txt");
+        if brew_details.exists() {
+            if let Ok(s) = fs::read_to_string(&brew_details) {
+                let details: Vec<String> = s.lines().map(|line| line.trim().to_string()).collect();
+                if !details.is_empty() {
+                    short_updates.insert(step.desc.to_string(), details);
+                }
+            }
+            // remove after reading
+            let _ = fs::remove_file(&brew_details);
+        }
+
+        // If the step wrote a rustup upgrade details file into tmpdir, read and record it
+        let rustup_details = run_tmp.join("rustup_upgrade_details.txt");
+        if rustup_details.exists() {
+            if let Ok(s) = fs::read_to_string(&rustup_details) {
+                let details: Vec<String> = s.lines().map(|line| line.trim().to_string()).collect();
+                if !details.is_empty() {
+                    short_updates.insert(step.desc.to_string(), details);
+                }
+            }
+            // remove after reading
+            let _ = fs::remove_file(&rustup_details);
         }
 
         // update external progress helper (this also updates the local bar)
@@ -690,10 +858,33 @@ fn main() -> Result<()> {
         println!("⚠️ 已是最新：{}", unchanged.join(", "));
     }
 
-    // Print concise mise short-updates if present
+    // Print Homebrew upgrade details if present
+    if let Some(vals) = short_updates.get("Homebrew：升级软件包") {
+        if !vals.is_empty() {
+            println!("📦 Homebrew 升级详情：");
+            for detail in vals {
+                println!("   {}", detail);
+            }
+        }
+    }
+
+    // Print Rustup upgrade details if present
+    if let Some(vals) = short_updates.get("Rust：更新 stable 工具链") {
+        if !vals.is_empty() {
+            println!("🦀 Rust 升级详情：");
+            for detail in vals {
+                println!("   {}", detail);
+            }
+        }
+    }
+
+    // Print Mise upgrade details if present
     if let Some(vals) = short_updates.get("Mise：更新托管工具") {
         if !vals.is_empty() {
-            println!("🔎 Mise 简要更新：{}", vals.join(", "));
+            println!("🔧 Mise 升级详情：");
+            for detail in vals {
+                println!("   {}", detail);
+            }
         }
     }
 
