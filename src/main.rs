@@ -335,10 +335,11 @@ fn brew_update(
     let state = if commit_before.trim() == commit_after.trim() && commit_before.trim() != "unknown"
     {
         "unchanged"
-    } else if out_update.contains("Already up-to-date.") {
-        "unchanged"
     } else {
-        "changed"
+        match out_update.contains("Already up-to-date.") {
+            true => "unchanged",
+            false => "changed",
+        }
     };
 
     Ok((state.to_string(), rc_update, logfile))
