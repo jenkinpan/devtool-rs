@@ -4,8 +4,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::Read;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use tempfile::tempdir;
@@ -35,7 +34,7 @@ impl Bar {
     }
 
     fn set_description(&mut self, _d: String) {
-        // 不再需要 kdam 的 set_description
+        // 不再需要 kdam 的 set_description，保留接口兼容性
     }
 
     fn update_to(&mut self, done: usize, current_step: &str) {
@@ -49,7 +48,7 @@ impl Bar {
         };
         let bar_width = 40;
         let filled = (done * bar_width) / self.total.max(1);
-        let bar = "=".repeat(filled) + &" ".repeat(bar_width - filled);
+        let bar = format!("{}{}", "=".repeat(filled), " ".repeat(bar_width - filled));
 
         // 构建进度条字符串，确保长度一致以覆盖之前的内容
         let progress_line = format!(
@@ -347,13 +346,10 @@ fn analyze_brew_upgrades(versions_before: &str, versions_after: &str) -> Vec<Str
 }
 
 fn parse_brew_version_line(line: &str) -> Option<(String, String)> {
-    let parts: Vec<&str> = line.split_whitespace().collect();
-    if parts.len() >= 2 {
-        let name = parts[0].to_string();
-        let version = parts[1].to_string();
-        Some((name, version))
-    } else {
-        None
+    let mut parts = line.split_whitespace();
+    match (parts.next(), parts.next()) {
+        (Some(name), Some(version)) => Some((name.to_string(), version.to_string())),
+        _ => None,
     }
 }
 
@@ -386,14 +382,13 @@ fn brew_update(
         verbose,
     )?;
 
-    let state = if commit_before.trim() == commit_after.trim() && commit_before.trim() != "unknown"
+    let state = if (commit_before.trim() == commit_after.trim()
+        && commit_before.trim() != "unknown")
+        || out_update.contains("Already up-to-date.")
     {
         "unchanged"
     } else {
-        match out_update.contains("Already up-to-date.") {
-            true => "unchanged",
-            false => "changed",
-        }
+        "changed"
     };
 
     Ok((state.to_string(), rc_update, logfile))
@@ -464,13 +459,14 @@ fn brew_cleanup(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_cleanup.log");
     let (_rc, to_remove) = run_command("brew cleanup -n --prune=7", &logfile, verbose, pbar)?;
-    if to_remove.trim().is_empty() {
+    let (rc, state) = if to_remove.trim().is_empty() {
         let (rc_real, _) = runner.run("brew cleanup -n --prune=7", &logfile, verbose)?;
-        Ok(("unchanged".to_string(), rc_real, logfile))
+        (rc_real, "unchanged")
     } else {
         let (rc2, _) = runner.run("brew cleanup --prune=7 --quiet", &logfile, verbose)?;
-        Ok(("changed".to_string(), rc2, logfile))
-    }
+        (rc2, "changed")
+    };
+    Ok((state.to_string(), rc, logfile))
 }
 
 fn rustup_update(
@@ -510,32 +506,31 @@ fn rustup_update(
         || out_text.contains("up to date")
         || version_before == version_after;
 
-    if is_unchanged {
-        Ok(("unchanged".to_string(), rc, logfile))
+    let state = if is_unchanged {
+        "unchanged"
     } else {
         // 解析版本信息并保存升级详情
-        let before_version = extract_rust_version(&version_before);
-        let after_version = extract_rust_version(&version_after);
-
-        if let (Some(before), Some(after)) = (before_version, after_version) {
+        if let (Some(before), Some(after)) = (
+            extract_rust_version(&version_before),
+            extract_rust_version(&version_after),
+        ) {
             let details_file = tmpdir.join("rustup_upgrade_details.txt");
             if let Ok(mut file) = File::create(&details_file) {
                 let _ = writeln!(file, "rustc: {} → {}", before, after);
             }
         }
-
-        Ok(("changed".to_string(), rc, logfile))
-    }
+        "changed"
+    };
+    Ok((state.to_string(), rc, logfile))
 }
 
 fn extract_rust_version(version_output: &str) -> Option<String> {
     // 从 "rustc 1.90.0 (1159e78c4 2025-09-14)" 提取 "1.90.0"
-    let parts: Vec<&str> = version_output.split_whitespace().collect();
-    if parts.len() >= 2 && parts[0] == "rustc" {
-        Some(parts[1].to_string())
-    } else {
-        None
-    }
+    version_output
+        .split_whitespace()
+        .nth(1)
+        .filter(|_| version_output.starts_with("rustc"))
+        .map(|s| s.to_string())
 }
 
 fn parse_mise_versions(output: &str) -> HashMap<String, String> {
@@ -681,11 +676,8 @@ fn mise_up(
                 }
             }
         }
-        if rc == 0 {
-            Ok(("changed".to_string(), rc, logfile))
-        } else {
-            Ok(("failed".to_string(), rc, logfile))
-        }
+        let state = if rc == 0 { "changed" } else { "failed" };
+        Ok((state.to_string(), rc, logfile))
     } else {
         Ok(("unchanged".to_string(), rc, logfile))
     }
@@ -778,8 +770,7 @@ fn main() -> Result<()> {
     let mut unchanged: Vec<String> = Vec::new();
     let mut actions: Vec<&str> = Vec::new();
     // collect short updates (step desc -> concise list)
-    let mut short_updates: std::collections::HashMap<String, Vec<String>> =
-        std::collections::HashMap::new();
+    let mut short_updates: HashMap<String, Vec<String>> = HashMap::new();
 
     for (idx, step) in steps.iter().enumerate() {
         // progress display handled centrally by `progress_update`; do not draw here.
@@ -904,21 +895,19 @@ fn main() -> Result<()> {
     // 计算总耗时
     let end_time = chrono::Local::now();
     let duration = end_time.signed_duration_since(start_time);
-    let duration_str = if duration.num_seconds() < 60 {
-        format!("{}秒", duration.num_seconds())
-    } else if duration.num_minutes() < 60 {
-        format!(
-            "{}分{}秒",
-            duration.num_minutes(),
-            duration.num_seconds() % 60
-        )
-    } else {
-        format!(
+    let duration_str = match (
+        duration.num_hours(),
+        duration.num_minutes(),
+        duration.num_seconds(),
+    ) {
+        (h, _, _) if h > 0 => format!(
             "{}小时{}分{}秒",
-            duration.num_hours(),
+            h,
             duration.num_minutes() % 60,
             duration.num_seconds() % 60
-        )
+        ),
+        (_, m, _) if m > 0 => format!("{}分{}秒", m, duration.num_seconds() % 60),
+        (_, _, s) => format!("{}秒", s),
     };
 
     println!(
