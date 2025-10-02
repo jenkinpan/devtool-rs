@@ -18,7 +18,10 @@ struct Bar {
 
 impl Bar {
     fn new(total: usize, _desc: &str) -> Self {
-        Bar { last_done: 0, total }
+        Bar {
+            last_done: 0,
+            total,
+        }
     }
 
     fn set_description(&mut self, _d: String) {
@@ -27,16 +30,23 @@ impl Bar {
 
     fn update_to(&mut self, done: usize, current_step: &str) {
         self.last_done = done;
-        
+
         // 显示自定义格式的进度条
-        let percent = if self.total > 0 { (done * 100) / self.total } else { 0 };
+        let percent = if self.total > 0 {
+            (done * 100) / self.total
+        } else {
+            0
+        };
         let bar_width = 40;
         let filled = (done * bar_width) / self.total.max(1);
         let bar = "=".repeat(filled) + &" ".repeat(bar_width - filled);
-        
+
         // 构建进度条字符串，确保长度一致以覆盖之前的内容
-        let progress_line = format!("[{}] {}/{} ({}%) | {}", bar, done, self.total, percent, current_step);
-        
+        let progress_line = format!(
+            "[{}] {}/{} ({}%) | {}",
+            bar, done, self.total, percent, current_step
+        );
+
         // 使用回车符回到行首，然后输出新内容，用空格填充到足够长度
         print!("\r{:<100}", progress_line);
         io::stdout().flush().ok();
@@ -446,7 +456,7 @@ fn main() -> Result<()> {
 
     if !args.no_banner {
         println!(
-            "🚀 开始 devtool 更新（Rust 版本）：{}",
+            "🚀 开始 devtool 更新：{}",
             chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
         );
     }
@@ -509,7 +519,7 @@ fn main() -> Result<()> {
 
     // Start external progress helper
     progress_start(total as u64, "devtool", &mut pb_opt);
-    
+
     // 初始化进度条显示
     if let Some(pb) = pb_opt.as_mut() {
         pb.update_to(0, "准备开始");
@@ -602,12 +612,11 @@ fn main() -> Result<()> {
         let done_count = (idx + 1) as u64;
         let percent = (100 * (idx + 1) / total) as i32;
         progress_update(percent, done_count, total as u64, step.desc, &mut pb_opt);
-        
+
         // 直接更新进度条显示
         if let Some(pb) = pb_opt.as_mut() {
             pb.update_to(done_count as usize, step.desc);
         }
-        
     }
 
     // finish progress helper
@@ -620,7 +629,10 @@ fn main() -> Result<()> {
         progress_finish();
     }
 
-    println!("\n🎉 更新完成：{}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
+    println!(
+        "\n🎉 更新完成：{}",
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+    );
     if !updated.is_empty() {
         println!("✅ 已更新：{}", updated.join(", "));
     } else {
