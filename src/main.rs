@@ -893,7 +893,12 @@ fn main() -> Result<()> {
         };
 
         if state == "changed" {
-            updated.push(step.desc);
+            // 根据步骤描述分类：清理操作归类为 actions，其他归类为 updated
+            if step.desc.contains("清理") || step.desc.starts_with("Action：") {
+                actions.push(step.desc);
+            } else {
+                updated.push(step.desc);
+            }
             succ.push(step.desc);
         } else if state == "unchanged" {
             // classify actions (contain '清理' or start with 'Action：') separately
