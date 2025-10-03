@@ -1,6 +1,6 @@
 [package]
 name = "devtool"
-version = "0.2.5"
+version = "0.3.0"
 edition = "2021"
 description = "A CLI tool for development in update rustup toolchain , mise maintained tools and hombrew packages."
 repository = "https://github.com/jenkinpan/devtool-rs"
@@ -8,14 +8,15 @@ license = "MIT OR Apache-2.0"
 keywords = ["cli", "development", "rust"]
 
 [dependencies]
-anyhow = "1"
+anyhow = "1.0"
 atty = "0.2"
-chrono = "0.4"
-clap = { version = "4", features = ["derive"] }
-dirs = "6"
-regex = "1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["derive"] }
+colored = "3.0.0"
+dirs = "6.0"
+regex = "1.10"
 # Using serde for status JSON
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tempfile = "3"
-which = "8"
+tempfile = "3.10"
+which = "8.0"

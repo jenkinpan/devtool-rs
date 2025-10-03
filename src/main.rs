@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
+use colored::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,6 +15,40 @@ fn get_cache_dir() -> PathBuf {
     dirs::cache_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
         .join("devtool")
+}
+
+// 颜色输出函数
+fn print_success(msg: &str) {
+    println!("{}", msg.green().bold());
+}
+
+fn print_info(msg: &str) {
+    println!("{}", msg.blue().bold());
+}
+
+fn print_warning(msg: &str) {
+    println!("{}", msg.yellow().bold());
+}
+
+fn print_error(msg: &str) {
+    println!("{}", msg.red().bold());
+}
+
+fn print_step(msg: &str) {
+    println!("{}", msg.cyan().bold());
+}
+
+fn print_detail(msg: &str) {
+    println!("   {}", msg.white());
+}
+
+fn print_banner(msg: &str) {
+    println!("{}", msg.magenta().bold());
+}
+
+// 检查终端是否支持颜色
+fn supports_color() -> bool {
+    atty::is(atty::Stream::Stdout) && std::env::var("NO_COLOR").is_err()
 }
 
 struct Bar {
@@ -48,13 +83,40 @@ impl Bar {
         };
         let bar_width = 40;
         let filled = (done * bar_width) / self.total.max(1);
-        let bar = format!("{}{}", "=".repeat(filled), " ".repeat(bar_width - filled));
+
+        // 根据进度选择颜色（暂时未使用，保留用于未来扩展）
+        let _bar_color = if percent >= 100 {
+            "=".green()
+        } else if percent >= 50 {
+            "=".yellow()
+        } else {
+            "=".blue()
+        };
+
+        let filled_bar = "=".repeat(filled);
+        let empty_bar = " ".repeat(bar_width - filled);
+        let bar = if supports_color() {
+            format!("{}{}", filled_bar.green(), empty_bar)
+        } else {
+            format!("{}{}", filled_bar, empty_bar)
+        };
 
         // 构建进度条字符串，确保长度一致以覆盖之前的内容
-        let progress_line = format!(
-            "[{}] {}/{} ({}%) | {}",
-            bar, done, self.total, percent, current_step
-        );
+        let progress_line = if supports_color() {
+            format!(
+                "[{}] {}/{} ({}%) | {}",
+                bar,
+                done.to_string().cyan().bold(),
+                self.total.to_string().cyan().bold(),
+                percent.to_string().cyan().bold(),
+                current_step.cyan()
+            )
+        } else {
+            format!(
+                "[{}] {}/{} ({}%) | {}",
+                bar, done, self.total, percent, current_step
+            )
+        };
 
         // 使用回车符回到行首，然后输出新内容，用空格填充到足够长度
         print!("\r{:<100}", progress_line);
@@ -685,6 +747,14 @@ fn mise_up(
 
 fn main() -> Result<()> {
     let args = Args::parse();
+
+    // 初始化颜色支持
+    if args.no_color {
+        colored::control::set_override(false);
+    } else if supports_color() {
+        colored::control::set_override(true);
+    }
+
     // support an administrative subcommand to read the progress status
     if args.command == "progress-status" {
         return progress_status_cmd();
@@ -694,10 +764,17 @@ fn main() -> Result<()> {
     let start_time = chrono::Local::now();
 
     if !args.no_banner {
-        println!(
-            "🚀 开始 devtool 更新：{}",
-            start_time.format("%Y-%m-%d %H:%M:%S")
-        );
+        if supports_color() && !args.no_color {
+            print_banner(&format!(
+                "🚀 开始 devtool 更新：{}",
+                start_time.format("%Y-%m-%d %H:%M:%S")
+            ));
+        } else {
+            println!(
+                "🚀 开始 devtool 更新：{}",
+                start_time.format("%Y-%m-%d %H:%M:%S")
+            );
+        }
     }
 
     let mut steps: Vec<Step> = Vec::new();
@@ -740,7 +817,14 @@ fn main() -> Result<()> {
 
     let total = steps.len();
     if total == 0 {
-        println!("⚠️ 未检测到可执行步骤。跳过： {}", skipped.join(", "));
+        if supports_color() && !args.no_color {
+            print_warning(&format!(
+                "⚠️ 未检测到可执行步骤。跳过： {}",
+                skipped.join(", ")
+            ));
+        } else {
+            println!("⚠️ 未检测到可执行步骤。跳过： {}", skipped.join(", "));
+        }
         return Ok(());
     }
 
@@ -751,9 +835,16 @@ fn main() -> Result<()> {
     let mut pb_opt = Some(Bar::new(total, "devtool"));
 
     // Always print the numbered steps so the user sees what's going to run.
-    println!("📋 将执行 {} 个步骤：", total);
-    for (i, s) in steps.iter().enumerate() {
-        println!("  {}) {}", i + 1, s.desc);
+    if supports_color() && !args.no_color {
+        print_info(&format!("📋 将执行 {} 个步骤：", total));
+        for (i, s) in steps.iter().enumerate() {
+            print_step(&format!("  {}) {}", i + 1, s.desc));
+        }
+    } else {
+        println!("📋 将执行 {} 个步骤：", total);
+        for (i, s) in steps.iter().enumerate() {
+            println!("  {}) {}", i + 1, s.desc);
+        }
     }
 
     // Start external progress helper
@@ -910,29 +1001,55 @@ fn main() -> Result<()> {
         (_, _, s) => format!("{}秒", s),
     };
 
-    println!(
-        "\n🎉 更新完成：{} (耗时: {})",
-        end_time.format("%Y-%m-%d %H:%M:%S"),
-        duration_str
-    );
-    if !updated.is_empty() {
-        println!("✅ 已更新：{}", updated.join(", "));
+    if supports_color() && !args.no_color {
+        print_success(&format!(
+            "\n🎉 更新完成：{} (耗时: {})",
+            end_time.format("%Y-%m-%d %H:%M:%S"),
+            duration_str
+        ));
+        if !updated.is_empty() {
+            print_success(&format!("✅ 已更新：{}", updated.join(", ")));
+        } else {
+            print_info("ℹ️ 无更新应用。");
+        }
+        if !actions.is_empty() {
+            print_info(&format!("🛠️ 已执行动作：{}", actions.join(", ")));
+        }
+        if !unchanged.is_empty() {
+            print_warning(&format!("⚠️ 已是最新：{}", unchanged.join(", ")));
+        }
     } else {
-        println!("ℹ️ 无更新应用。");
-    }
-    if !actions.is_empty() {
-        println!("🛠️ 已执行动作：{}", actions.join(", "));
-    }
-    if !unchanged.is_empty() {
-        println!("⚠️ 已是最新：{}", unchanged.join(", "));
+        println!(
+            "\n🎉 更新完成：{} (耗时: {})",
+            end_time.format("%Y-%m-%d %H:%M:%S"),
+            duration_str
+        );
+        if !updated.is_empty() {
+            println!("✅ 已更新：{}", updated.join(", "));
+        } else {
+            println!("ℹ️ 无更新应用。");
+        }
+        if !actions.is_empty() {
+            println!("🛠️ 已执行动作：{}", actions.join(", "));
+        }
+        if !unchanged.is_empty() {
+            println!("⚠️ 已是最新：{}", unchanged.join(", "));
+        }
     }
 
     // Print Homebrew upgrade details if present
     if let Some(vals) = short_updates.get("Homebrew：升级软件包") {
         if !vals.is_empty() {
-            println!("📦 Homebrew 升级详情：");
-            for detail in vals {
-                println!("   {}", detail);
+            if supports_color() && !args.no_color {
+                print_info("📦 Homebrew 升级详情：");
+                for detail in vals {
+                    print_detail(detail);
+                }
+            } else {
+                println!("📦 Homebrew 升级详情：");
+                for detail in vals {
+                    println!("   {}", detail);
+                }
             }
         }
     }
@@ -940,9 +1057,16 @@ fn main() -> Result<()> {
     // Print Rustup upgrade details if present
     if let Some(vals) = short_updates.get("Rust：更新 stable 工具链") {
         if !vals.is_empty() {
-            println!("🦀 Rust 升级详情：");
-            for detail in vals {
-                println!("   {}", detail);
+            if supports_color() && !args.no_color {
+                print_info("🦀 Rust 升级详情：");
+                for detail in vals {
+                    print_detail(detail);
+                }
+            } else {
+                println!("🦀 Rust 升级详情：");
+                for detail in vals {
+                    println!("   {}", detail);
+                }
             }
         }
     }
@@ -950,15 +1074,26 @@ fn main() -> Result<()> {
     // Print Mise upgrade details if present
     if let Some(vals) = short_updates.get("Mise：更新托管工具") {
         if !vals.is_empty() {
-            println!("🔧 Mise 升级详情：");
-            for detail in vals {
-                println!("   {}", detail);
+            if supports_color() && !args.no_color {
+                print_info("🔧 Mise 升级详情：");
+                for detail in vals {
+                    print_detail(detail);
+                }
+            } else {
+                println!("🔧 Mise 升级详情：");
+                for detail in vals {
+                    println!("   {}", detail);
+                }
             }
         }
     }
 
     if !fail.is_empty() {
-        println!("❌ 失败：{}", fail.join(", "));
+        if supports_color() && !args.no_color {
+            print_error(&format!("❌ 失败：{}", fail.join(", ")));
+        } else {
+            println!("❌ 失败：{}", fail.join(", "));
+        }
         std::process::exit(1);
     }
 
