@@ -17,33 +17,46 @@ fn get_cache_dir() -> PathBuf {
         .join("devtool")
 }
 
-// 颜色输出函数
+// 颜色输出函数 - 只对关键信息使用颜色进行区分
 fn print_success(msg: &str) {
-    println!("{}", msg.green().bold());
+    if supports_color() {
+        println!("{}", msg.green().bold());
+    } else {
+        println!("{}", msg);
+    }
 }
 
 fn print_info(msg: &str) {
-    println!("{}", msg.blue().bold());
+    if supports_color() {
+        println!("{}", msg.blue());
+    } else {
+        println!("{}", msg);
+    }
 }
 
 fn print_warning(msg: &str) {
-    println!("{}", msg.yellow().bold());
+    if supports_color() {
+        println!("{}", msg.yellow());
+    } else {
+        println!("{}", msg);
+    }
 }
 
 fn print_error(msg: &str) {
-    println!("{}", msg.red().bold());
+    if supports_color() {
+        println!("{}", msg.red().bold());
+    } else {
+        println!("{}", msg);
+    }
 }
 
-fn print_step(msg: &str) {
-    println!("{}", msg.cyan().bold());
-}
-
-fn print_detail(msg: &str) {
-    println!("   {}", msg.white());
-}
 
 fn print_banner(msg: &str) {
-    println!("{}", msg.magenta().bold());
+    if supports_color() {
+        println!("{}", msg.magenta().bold());
+    } else {
+        println!("{}", msg);
+    }
 }
 
 // 检查终端是否支持颜色
@@ -103,13 +116,14 @@ impl Bar {
 
         // 构建进度条字符串，确保长度一致以覆盖之前的内容
         let progress_line = if supports_color() {
+            // 只对进度条本身使用颜色，数字和文字保持原色
             format!(
                 "[{}] {}/{} ({}%) | {}",
-                bar,
-                done.to_string().cyan().bold(),
-                self.total.to_string().cyan().bold(),
-                percent.to_string().cyan().bold(),
-                current_step.cyan()
+                bar, 
+                done, 
+                self.total, 
+                percent,
+                current_step
             )
         } else {
             format!(
@@ -837,14 +851,11 @@ fn main() -> Result<()> {
     // Always print the numbered steps so the user sees what's going to run.
     if supports_color() && !args.no_color {
         print_info(&format!("📋 将执行 {} 个步骤：", total));
-        for (i, s) in steps.iter().enumerate() {
-            print_step(&format!("  {}) {}", i + 1, s.desc));
-        }
     } else {
         println!("📋 将执行 {} 个步骤：", total);
-        for (i, s) in steps.iter().enumerate() {
-            println!("  {}) {}", i + 1, s.desc);
-        }
+    }
+    for (i, s) in steps.iter().enumerate() {
+        println!("  {}) {}", i + 1, s.desc);
     }
 
     // Start external progress helper
@@ -1042,14 +1053,11 @@ fn main() -> Result<()> {
         if !vals.is_empty() {
             if supports_color() && !args.no_color {
                 print_info("📦 Homebrew 升级详情：");
-                for detail in vals {
-                    print_detail(detail);
-                }
             } else {
                 println!("📦 Homebrew 升级详情：");
-                for detail in vals {
-                    println!("   {}", detail);
-                }
+            }
+            for detail in vals {
+                println!("   {}", detail);
             }
         }
     }
@@ -1059,14 +1067,11 @@ fn main() -> Result<()> {
         if !vals.is_empty() {
             if supports_color() && !args.no_color {
                 print_info("🦀 Rust 升级详情：");
-                for detail in vals {
-                    print_detail(detail);
-                }
             } else {
                 println!("🦀 Rust 升级详情：");
-                for detail in vals {
-                    println!("   {}", detail);
-                }
+            }
+            for detail in vals {
+                println!("   {}", detail);
             }
         }
     }
@@ -1076,14 +1081,11 @@ fn main() -> Result<()> {
         if !vals.is_empty() {
             if supports_color() && !args.no_color {
                 print_info("🔧 Mise 升级详情：");
-                for detail in vals {
-                    print_detail(detail);
-                }
             } else {
                 println!("🔧 Mise 升级详情：");
-                for detail in vals {
-                    println!("   {}", detail);
-                }
+            }
+            for detail in vals {
+                println!("   {}", detail);
             }
         }
     }
