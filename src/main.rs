@@ -50,7 +50,6 @@ fn print_error(msg: &str) {
     }
 }
 
-
 fn print_banner(msg: &str) {
     if supports_color() {
         println!("{}", msg.magenta().bold());
@@ -119,11 +118,7 @@ impl Bar {
             // 只对进度条本身使用颜色，数字和文字保持原色
             format!(
                 "[{}] {}/{} ({}%) | {}",
-                bar, 
-                done, 
-                self.total, 
-                percent,
-                current_step
+                bar, done, self.total, percent, current_step
             )
         } else {
             format!(
