@@ -16,8 +16,6 @@ keywords = [
     "homebrew",
     "rustup",
     "mise",
-    "update",
-    "toolchain",
 ]
 categories = ["command-line-utilities", "development-tools"]
 
