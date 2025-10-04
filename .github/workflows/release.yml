@@ -8,101 +8,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    name: Create Release
+  publish-crates:
+    name: Publish to crates.io
     runs-on: ubuntu-latest
+    environment: release
     permissions:
-      contents: write
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get version from tag
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Extract changelog for this version
-        id: changelog
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          CHANGELOG=$(awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | sed '$d' | tail -n +2)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: Release v${{ steps.get_version.outputs.version }}
-          body: |
-            ## What's Changed
-
-            ${{ steps.changelog.outputs.changelog }}
-
-            ## Installation
-
-            ### From source
-            ```bash
-            cargo install devtool --version ${{ steps.get_version.outputs.version }}
-            ```
-
-            ### From binary
-            Download the appropriate binary for your platform from the assets below.
-
-            ## Full Changelog
-            For a complete list of changes, see [CHANGELOG.md](https://github.com/jenkinpan/devtool-rs/blob/v${{ steps.get_version.outputs.version }}/CHANGELOG.md)
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-release:
-    name: Build Release Assets
-    needs: create-release
-    permissions:
-      contents: write
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: devtool
-            asset_name: devtool-linux-x86_64
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            artifact_name: devtool
-            asset_name: devtool-linux-x86_64-musl
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact_name: devtool
-            asset_name: devtool-macos-x86_64
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact_name: devtool
-            asset_name: devtool-macos-aarch64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: devtool.exe
-            asset_name: devtool-windows-x86_64.exe
-    runs-on: ${{ matrix.os }}
+      id-token: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Install musl tools (Linux musl only)
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -116,58 +34,8 @@ jobs:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Cache target directory
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-target-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }} --verbose
-
-      - name: Strip binary (Linux and macOS)
-        if: matrix.os != 'windows-latest'
-        run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-
-      - name: Create archive (Linux and macOS)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
-          cd -
-          mv target/${{ matrix.target }}/release/${{ matrix.asset_name }}.tar.gz .
-
-      - name: Create archive (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          cd target/${{ matrix.target }}/release
-          7z a ${{ matrix.asset_name }}.zip ${{ matrix.artifact_name }}
-          cd -
-          mv target/${{ matrix.target }}/release/${{ matrix.asset_name }}.zip .
-
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            ${{ matrix.asset_name }}.tar.gz
-            ${{ matrix.asset_name }}.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-crates:
-    name: Publish to crates.io
-    needs: build-release
-    runs-on: ubuntu-latest
-    environment: release
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Run tests
+        run: cargo test --verbose
 
       - name: Authenticate with crates.io
         uses: rust-lang/crates-io-auth-action@v1
