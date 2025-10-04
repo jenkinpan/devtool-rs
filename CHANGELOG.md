@@ -7,24 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2024-01-XX
+
 ### Added
-- Chinese README (`README_zh.md`) for Chinese-speaking users
+- Chinese README (`README_zh.md`) for better support of Chinese-speaking users
 - Language switcher links in both English and Chinese README files
+- Comprehensive troubleshooting section in README
+- FAQ section with 10 common questions
+- Tips & tricks section for automation and integration examples
 
 ### Changed
 - **Major documentation cleanup**: Simplified and reorganized project documentation
   - Removed `docs/` directory and consolidated content into main documentation files
-  - Simplified `ARCHITECTURE.md` from 13K to 3K (removed excessive implementation details)
-  - Expanded `README.md` with troubleshooting, FAQ, and tips sections
+  - Simplified `ARCHITECTURE.md` from 13K to 3.8K (removed excessive implementation details)
+  - Expanded `README.md` from 5.2K to 10K with practical user guidance
   - Removed internal work summary and premature performance documentation
-  - Reduced total documentation size by ~40K while improving clarity
+  - Reduced total documentation size by ~32K (-51%) while improving clarity
+- Better documentation structure now matches project size (~1,500 LOC)
 
 ### Fixed
 - Replaced unmaintained `atty` dependency with standard library's `IsTerminal` trait
 - Fixed CI security-audit task permission issues
-- Resolved cargo-audit warnings about unmaintained dependencies
+- Resolved cargo-audit warnings (RUSTSEC-2024-0375, RUSTSEC-2021-0145)
+
+### Internal
+- Improved CI/CD pipeline reliability
+- Enhanced release automation with multi-platform builds
+- Added criterion as dev-dependency for performance benchmarking
+
+## [0.4.0] - 2024-01-XX
+
+### Changed
+- **Major refactoring**: Restructured the entire codebase into modular components for better maintainability
+  - Split monolithic `main.rs` (~1,299 lines) into focused modules
+  - Organized code into logical modules: `cli`, `i18n`, `ui`, `progress`, `runner`, `commands`, `utils`
+  - Each tool (Homebrew, Rustup, Mise) now has its own dedicated module
+  - Improved code reusability and testability
 
 ### Added
+- Comprehensive test suite with 33+ unit tests covering:
+  - CLI argument parsing
+  - Internationalization (i18n)
+  - UI output functions
+  - Command runner
+  - Individual tool update logic
 - Comprehensive CI/CD pipeline with GitHub Actions
   - Multi-platform testing (Ubuntu, macOS, Windows)
   - Code quality checks: clippy, rustfmt, documentation
@@ -46,42 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - I/O operation benchmarks
   - String operation benchmarks
 
-### Changed
-- Updated README with CI and coverage badges
-- Fixed clippy warnings: removed unnecessary borrows
-
-### Internal
-- Added criterion as dev-dependency for benchmarking
-- Prepared foundation for future parallel execution optimization
-
-## [0.4.0] - 2024-01-XX
-
-### Changed
-- **Major refactoring**: Restructured the entire codebase into modular components for better maintainability
-  - Split monolithic `main.rs` (~1299 lines) into focused modules
-  - Organized code into logical modules: `cli`, `i18n`, `ui`, `progress`, `runner`, `commands`, `utils`
-  - Each tool (Homebrew, Rustup, Mise) now has its own dedicated module
-  - Improved code reusability and testability
-
-### Added
-- Comprehensive test suite with 33+ unit tests covering:
-  - CLI argument parsing
-  - Internationalization (i18n)
-  - UI output functions
-  - Command runner
-  - Individual tool update logic
-- Module structure:
-  - `cli`: Command-line argument definitions and parsing
-  - `i18n`: Localization and language detection
-  - `ui`: User interface output, color handling, progress bars
-  - `progress`: Progress state and progress bar management
-  - `runner`: External command execution wrapper
-  - `commands`: Update logic for various tools (Homebrew, Rustup, Mise)
-  - `utils`: Common utility functions
-
 ### Fixed
 - String escaping issues in localization module
 - Clap version flag conflicts
+- Clippy warnings: removed unnecessary borrows
 
 ### Internal
 - Improved error handling across all modules
@@ -126,6 +120,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Upgrade Notes
 
+### 0.4.0 → 0.4.1
+
+This is a documentation and maintenance release. All existing functionality works exactly as before.
+
+Changes:
+- Better documentation for Chinese users
+- Cleaner, more focused documentation structure
+- Fixed dependency security warnings
+- No breaking changes or new features
+
+No action is required when upgrading.
+
 ### 0.3.5 → 0.4.0
 
 This is a refactoring release that maintains full backward compatibility. All existing commands and options work exactly as before. The main changes are internal code organization improvements that will enable:
@@ -139,7 +145,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.3.5...v0.4.0
 [0.3.5]: https://github.com/jenkinpan/devtool-rs/compare/v0.3.0...v0.3.5
 [0.3.0]: https://github.com/jenkinpan/devtool-rs/releases/tag/v0.3.0
