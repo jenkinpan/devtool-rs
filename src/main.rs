@@ -27,7 +27,7 @@ fn detect_system_language() -> String {
             return "en".to_string();
         }
     }
-    
+
     if let Ok(lang) = std::env::var("LC_ALL") {
         if lang.starts_with("zh") {
             return "zh".to_string();
@@ -35,7 +35,7 @@ fn detect_system_language() -> String {
             return "en".to_string();
         }
     }
-    
+
     if let Ok(lang) = std::env::var("LC_CTYPE") {
         if lang.starts_with("zh") {
             return "zh".to_string();
@@ -43,7 +43,7 @@ fn detect_system_language() -> String {
             return "en".to_string();
         }
     }
-    
+
     // 检查 LANGUAGE 环境变量 / Check LANGUAGE environment variable
     if let Ok(lang) = std::env::var("LANGUAGE") {
         // LANGUAGE 格式通常是 "zh_CN:en_US"，取第一个语言
@@ -55,7 +55,7 @@ fn detect_system_language() -> String {
             }
         }
     }
-    
+
     // 检查系统语言设置（macOS） / Check system language settings (macOS)
     if let Ok(output) = Command::new("defaults")
         .args(&["read", "-g", "AppleLanguages"])
@@ -67,7 +67,7 @@ fn detect_system_language() -> String {
             }
         }
     }
-    
+
     // 默认返回英语 / Default to English
     "en".to_string()
 }
@@ -124,7 +124,7 @@ impl LocalizedStrings {
                 step_cleanup: "Action: Cleanup old versions".to_string(),
                 step_rust_update: "Rust: Update stable toolchain".to_string(),
                 step_mise_update: "Mise: Update managed tools".to_string(),
-            }
+            },
         }
     }
 }
@@ -345,6 +345,8 @@ struct Args {
     dry_run: bool,
     #[arg(short = 'v', long = "verbose")]
     verbose: bool,
+    #[arg(short = 'V', long = "version")]
+    version: bool,
     #[arg(long = "no-color")]
     no_color: bool,
     #[arg(long = "keep-logs")]
@@ -910,6 +912,13 @@ fn mise_up(
 fn main() -> Result<()> {
     let args = Args::parse();
 
+    // 处理版本信息输出 / Handle version information output
+    if args.version {
+        let version_info = format!("devtool {}", env!("CARGO_PKG_VERSION"));
+        println!("{}", version_info);
+        return Ok(());
+    }
+
     // 检测系统语言并初始化本地化 / Detect system language and initialize localization
     let system_lang = detect_system_language();
     // 调试输出 / Debug output
@@ -992,9 +1001,12 @@ fn main() -> Result<()> {
         let warning_msg = if system_lang == "zh" {
             format!("⚠️ 未检测到可执行步骤。跳过： {}", skipped.join(", "))
         } else {
-            format!("⚠️ No executable steps detected. Skipped: {}", skipped.join(", "))
+            format!(
+                "⚠️ No executable steps detected. Skipped: {}",
+                skipped.join(", ")
+            )
         };
-        
+
         if supports_color() && !args.no_color {
             print_warning(&warning_msg);
         } else {
@@ -1010,7 +1022,10 @@ fn main() -> Result<()> {
     let mut pb_opt = Some(Bar::new(total, "devtool"));
 
     // Always print the numbered steps so the user sees what's going to run.
-    let steps_msg = format!("📋 {}", localized.steps_count.replace("{}", &total.to_string()));
+    let steps_msg = format!(
+        "📋 {}",
+        localized.steps_count.replace("{}", &total.to_string())
+    );
     if supports_color() && !args.no_color {
         print_info(&steps_msg);
     } else {
@@ -1186,7 +1201,7 @@ fn main() -> Result<()> {
         localized.time_taken,
         duration_str
     );
-    
+
     if supports_color() && !args.no_color {
         print_success(&update_complete_msg);
         if !updated.is_empty() {
