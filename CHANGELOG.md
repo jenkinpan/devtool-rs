@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Major documentation cleanup**: Simplified and reorganized project documentation
+  - Removed `docs/` directory and consolidated content into main documentation files
+  - Simplified `ARCHITECTURE.md` from 13K to 3K (removed excessive implementation details)
+  - Expanded `README.md` with troubleshooting, FAQ, and tips sections
+  - Removed internal work summary and premature performance documentation
+  - Reduced total documentation size by ~40K while improving clarity
+
 ### Fixed
 - Replaced unmaintained `atty` dependency with standard library's `IsTerminal` trait
 - Fixed CI security-audit task permission issues
