@@ -80,7 +80,6 @@ impl Bar {
         }
     }
 
-
     fn update_to(&mut self, done: usize, current_step: &str) {
         self.last_done = done;
 
