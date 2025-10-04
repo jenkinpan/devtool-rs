@@ -427,7 +427,7 @@ fn parse_brew_version_line(line: &str) -> Option<(String, String)> {
 fn parse_brew_upgrade_output(output: &str) -> Vec<String> {
     let mut upgrades = Vec::new();
     let lines: Vec<&str> = output.lines().collect();
-    
+
     for line in lines {
         let line = line.trim();
         // 匹配 "package old_version -> new_version" 格式
@@ -437,7 +437,7 @@ fn parse_brew_upgrade_output(output: &str) -> Vec<String> {
             }
         }
     }
-    
+
     upgrades
 }
 
@@ -446,16 +446,19 @@ fn parse_upgrade_line(line: &str) -> Option<String> {
     if let Some(arrow_pos) = line.find(" -> ") {
         let before_arrow = &line[..arrow_pos];
         let after_arrow = &line[arrow_pos + 4..];
-        
+
         // 提取包名和版本
         let parts: Vec<&str> = before_arrow.split_whitespace().collect();
         if parts.len() >= 2 {
             let package_name = parts[0];
             let old_version = parts[1];
             let new_version = after_arrow.split_whitespace().next().unwrap_or("");
-            
+
             if !new_version.is_empty() {
-                return Some(format!("{}: {} → {}", package_name, old_version, new_version));
+                return Some(format!(
+                    "{}: {} → {}",
+                    package_name, old_version, new_version
+                ));
             }
         }
     }
@@ -518,7 +521,7 @@ fn brew_upgrade(
     }
 
     // 检查输出是否包含过时软件包的信息
-    let has_outdated = !out_outdated.trim().is_empty() 
+    let has_outdated = !out_outdated.trim().is_empty()
         && !out_outdated.contains("No outdated packages")
         && !out_outdated.contains("No outdated formulae");
 
