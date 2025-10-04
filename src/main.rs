@@ -80,9 +80,6 @@ impl Bar {
         }
     }
 
-    fn set_description(&mut self, _d: String) {
-        // 不再需要 kdam 的 set_description，保留接口兼容性
-    }
 
     fn update_to(&mut self, done: usize, current_step: &str) {
         self.last_done = done;
@@ -140,7 +137,7 @@ impl Drop for Bar {
         io::stdout().flush().ok();
     }
 }
-fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
+fn progress_start(total: u64, desc: &str, _pbar: &mut Option<Bar>) {
     // write a structured status file to cache dir
     let cache_dir = get_cache_dir();
     let _ = fs::create_dir_all(&cache_dir);
@@ -157,13 +154,10 @@ fn progress_start(total: u64, desc: &str, pbar: &mut Option<Bar>) {
         &status_file,
         serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
     );
-    if let Some(pb) = pbar.as_mut() {
-        pb.set_description(desc.to_string());
-        // 不在这里调用 update_to，避免重复输出
-    }
+    // 进度条描述由 update_to 方法统一管理
 }
 
-fn progress_update(percent: i32, done: u64, total: u64, desc: &str, pbar: &mut Option<Bar>) {
+fn progress_update(percent: i32, done: u64, total: u64, desc: &str, _pbar: &mut Option<Bar>) {
     let cache_dir = get_cache_dir();
     let _ = fs::create_dir_all(&cache_dir);
     let status_file = cache_dir.join("progress.status");
@@ -179,15 +173,7 @@ fn progress_update(percent: i32, done: u64, total: u64, desc: &str, pbar: &mut O
         &status_file,
         serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
     );
-    if let Some(pb) = pbar.as_mut() {
-        let mut desc_short = desc.to_string();
-        if desc_short.len() > 40 {
-            desc_short.truncate(37);
-            desc_short.push_str("...");
-        }
-        pb.set_description(desc_short.clone());
-        // 不在这里更新进度条，避免重复输出，由主循环统一管理
-    }
+    // 进度条描述由 update_to 方法统一管理
 }
 
 #[derive(Serialize, Deserialize, Debug)]
