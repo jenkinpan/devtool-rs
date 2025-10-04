@@ -11,7 +11,6 @@ documentation = "https://docs.rs/devtool"
 license = "MIT OR Apache-2.0"
 keywords = [
     "cli",
-    "development",
     "rust",
     "homebrew",
     "rustup",
