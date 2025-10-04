@@ -1,6 +1,6 @@
 [package]
 name = "devtool"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 authors = ["jenkinpan <jenkinpan0628@gmail.com>"]
 description = "A CLI tool for development in update rustup toolchain, mise maintained tools and homebrew packages."
