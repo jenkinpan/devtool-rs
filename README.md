@@ -61,17 +61,17 @@ This is equivalent to running `devtool update`.
 
 Customize `devtool` behavior with these options:
 
-| Option         | Short | Description                                                                 |
-| -------------- | ----- | --------------------------------------------------------------------------- |
-| `--dry-run`    | `-n`  | Show steps that would be executed without actually running them             |
-| `--verbose`    | `-v`  | Print detailed output for each step during execution                       |
-| `--version`    | `-V`  | Show version information                                                     |
-| `--keep-logs`  |       | Keep log files for each step, stored in `~/.cache/devtool/` by default    |
-| `--no-banner`  |       | Don't show startup banner                                                   |
-| `--compact`    |       | Use more compact output format for non-interactive environments            |
-| `--parallel`   |       | (Not implemented) Execute update steps in parallel                         |
-| `--no-color`   |       | Disable colored output                                                      |
-| `--help`       | `-h`  | Show help information                                                        |
+| Option        | Short | Description                                                            |
+| ------------- | ----- | ---------------------------------------------------------------------- |
+| `--dry-run`   | `-n`  | Show steps that would be executed without actually running them        |
+| `--verbose`   | `-v`  | Print detailed output for each step during execution                   |
+| `--version`   | `-V`  | Show version information                                               |
+| `--keep-logs` |       | Keep log files for each step, stored in `~/.cache/devtool/` by default |
+| `--no-banner` |       | Don't show startup banner                                              |
+| `--compact`   |       | Use more compact output format for non-interactive environments        |
+| `--parallel`  |       | (Not implemented) Execute update steps in parallel                     |
+| `--no-color`  |       | Disable colored output                                                 |
+| `--help`      | `-h`  | Show help information                                                  |
 
 ### Examples
 
