@@ -42,7 +42,7 @@ pub fn detect_system_language() -> String {
 
     // 检查系统语言设置（macOS） / Check system language settings (macOS)
     if let Ok(output) = Command::new("defaults")
-        .args(&["read", "-g", "AppleLanguages"])
+        .args(["read", "-g", "AppleLanguages"])
         .output()
     {
         if let Ok(lang_str) = String::from_utf8(output.stdout) {

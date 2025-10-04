@@ -3,8 +3,10 @@
 A modern, efficient developer tool written in Rust that unifies the update process for your development environment tools and package managers with a single command. Say goodbye to multiple update commands and let `devtool` keep everything up to date.
 
 [![Crates.io](https://img.shields.io/crates/v/devtool.svg)](https://crates.io/crates/devtool)
+[![CI](https://github.com/jenkinpan/devtool-rs/workflows/CI/badge.svg)](https://github.com/jenkinpan/devtool-rs/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
+[![codecov](https://codecov.io/gh/jenkinpan/devtool-rs/branch/main/graph/badge.svg)](https://codecov.io/gh/jenkinpan/devtool-rs)
 
 ## ✨ Features
 

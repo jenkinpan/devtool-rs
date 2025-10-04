@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_args_defaults() {
-        let args = Args::parse_from(&["devtool"]);
+        let args = Args::parse_from(["devtool"]);
         assert_eq!(args.command, "update");
         assert!(!args.dry_run);
         assert!(!args.verbose);
@@ -53,19 +53,19 @@ mod tests {
 
     #[test]
     fn test_args_dry_run() {
-        let args = Args::parse_from(&["devtool", "--dry-run"]);
+        let args = Args::parse_from(["devtool", "--dry-run"]);
         assert!(args.dry_run);
     }
 
     #[test]
     fn test_args_verbose() {
-        let args = Args::parse_from(&["devtool", "-v"]);
+        let args = Args::parse_from(["devtool", "-v"]);
         assert!(args.verbose);
     }
 
     #[test]
     fn test_args_no_color() {
-        let args = Args::parse_from(&["devtool", "--no-color"]);
+        let args = Args::parse_from(["devtool", "--no-color"]);
         assert!(args.no_color);
     }
 }
