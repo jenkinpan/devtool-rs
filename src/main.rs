@@ -17,6 +17,118 @@ fn get_cache_dir() -> PathBuf {
         .join("devtool")
 }
 
+// 语言检测和本地化支持 / Language detection and localization support
+fn detect_system_language() -> String {
+    // 检查环境变量（优先级最高） / Check environment variables (highest priority)
+    if let Ok(lang) = std::env::var("LANG") {
+        if lang.starts_with("zh") {
+            return "zh".to_string();
+        } else if lang.starts_with("en") {
+            return "en".to_string();
+        }
+    }
+    
+    if let Ok(lang) = std::env::var("LC_ALL") {
+        if lang.starts_with("zh") {
+            return "zh".to_string();
+        } else if lang.starts_with("en") {
+            return "en".to_string();
+        }
+    }
+    
+    if let Ok(lang) = std::env::var("LC_CTYPE") {
+        if lang.starts_with("zh") {
+            return "zh".to_string();
+        } else if lang.starts_with("en") {
+            return "en".to_string();
+        }
+    }
+    
+    // 检查 LANGUAGE 环境变量 / Check LANGUAGE environment variable
+    if let Ok(lang) = std::env::var("LANGUAGE") {
+        // LANGUAGE 格式通常是 "zh_CN:en_US"，取第一个语言
+        if let Some(first_lang) = lang.split(':').next() {
+            if first_lang.starts_with("zh") {
+                return "zh".to_string();
+            } else if first_lang.starts_with("en") {
+                return "en".to_string();
+            }
+        }
+    }
+    
+    // 检查系统语言设置（macOS） / Check system language settings (macOS)
+    if let Ok(output) = Command::new("defaults")
+        .args(&["read", "-g", "AppleLanguages"])
+        .output()
+    {
+        if let Ok(lang_str) = String::from_utf8(output.stdout) {
+            if lang_str.contains("zh") {
+                return "zh".to_string();
+            }
+        }
+    }
+    
+    // 默认返回英语 / Default to English
+    "en".to_string()
+}
+
+// 本地化字符串结构 / Localized string structure
+struct LocalizedStrings {
+    banner: String,
+    steps_count: String,
+    progress_preparing: String,
+    progress_complete: String,
+    update_complete: String,
+    time_taken: String,
+    no_updates: String,
+    actions_executed: String,
+    already_latest: String,
+    step_homebrew_update: String,
+    step_homebrew_upgrade: String,
+    step_cleanup: String,
+    step_rust_update: String,
+    step_mise_update: String,
+}
+
+impl LocalizedStrings {
+    fn new(lang: &str) -> Self {
+        match lang {
+            "zh" => Self {
+                banner: "🚀 开始 devtool 更新：".to_string(),
+                steps_count: "将执行 {} 个步骤：".to_string(),
+                progress_preparing: "准备开始".to_string(),
+                progress_complete: "完成".to_string(),
+                update_complete: "🎉 更新完成：".to_string(),
+                time_taken: "耗时".to_string(),
+                no_updates: "ℹ️ 无更新应用。".to_string(),
+                actions_executed: "🛠️ 已执行动作：".to_string(),
+                already_latest: "⚠️ 已是最新：".to_string(),
+                step_homebrew_update: "Homebrew：更新索引".to_string(),
+                step_homebrew_upgrade: "Homebrew：升级软件包".to_string(),
+                step_cleanup: "Action：清理旧版本".to_string(),
+                step_rust_update: "Rust：更新 stable 工具链".to_string(),
+                step_mise_update: "Mise：更新托管工具".to_string(),
+            },
+            _ => Self {
+                banner: "🚀 Starting devtool update: ".to_string(),
+                steps_count: "Will execute {} steps:".to_string(),
+                progress_preparing: "Preparing to start".to_string(),
+                progress_complete: "Complete".to_string(),
+                update_complete: "🎉 Update completed: ".to_string(),
+                time_taken: "Time taken".to_string(),
+                no_updates: "ℹ️ No updates applied.".to_string(),
+                actions_executed: "🛠️ Actions executed: ".to_string(),
+                already_latest: "⚠️ Already latest: ".to_string(),
+                step_homebrew_update: "Homebrew: Update index".to_string(),
+                step_homebrew_upgrade: "Homebrew: Upgrade packages".to_string(),
+                step_cleanup: "Action: Cleanup old versions".to_string(),
+                step_rust_update: "Rust: Update stable toolchain".to_string(),
+                step_mise_update: "Mise: Update managed tools".to_string(),
+            }
+        }
+    }
+}
+
 // 颜色输出函数 / Color output functions - 只对关键信息使用颜色进行区分 / Only use colors for key information to distinguish
 fn print_success(msg: &str) {
     if supports_color() {
@@ -247,7 +359,7 @@ struct Args {
 type StepFn = fn(&dyn Runner, &Path, bool, &mut Option<Bar>) -> Result<(String, i32, PathBuf)>;
 
 struct Step {
-    desc: &'static str,
+    desc: String,
     fn_name: StepFn,
 }
 
@@ -798,6 +910,14 @@ fn mise_up(
 fn main() -> Result<()> {
     let args = Args::parse();
 
+    // 检测系统语言并初始化本地化 / Detect system language and initialize localization
+    let system_lang = detect_system_language();
+    // 调试输出 / Debug output
+    if args.verbose {
+        println!("Debug: Detected language: {}", system_lang);
+    }
+    let localized = LocalizedStrings::new(&system_lang);
+
     // 初始化颜色支持 / Initialize color support
     if args.no_color {
         colored::control::set_override(false);
@@ -816,12 +936,14 @@ fn main() -> Result<()> {
     if !args.no_banner {
         if supports_color() && !args.no_color {
             print_banner(&format!(
-                "🚀 开始 devtool 更新：{}",
+                "{}{}",
+                localized.banner,
                 start_time.format("%Y-%m-%d %H:%M:%S")
             ));
         } else {
             println!(
-                "🚀 开始 devtool 更新：{}",
+                "{}{}",
+                localized.banner,
                 start_time.format("%Y-%m-%d %H:%M:%S")
             );
         }
@@ -832,15 +954,15 @@ fn main() -> Result<()> {
 
     if which("brew").is_ok() {
         steps.push(Step {
-            desc: "Homebrew：更新索引",
+            desc: localized.step_homebrew_update.clone(),
             fn_name: brew_update,
         });
         steps.push(Step {
-            desc: "Homebrew：升级软件包",
+            desc: localized.step_homebrew_upgrade.clone(),
             fn_name: brew_upgrade,
         });
         steps.push(Step {
-            desc: "Action：清理旧版本",
+            desc: localized.step_cleanup.clone(),
             fn_name: brew_cleanup,
         });
     } else {
@@ -849,7 +971,7 @@ fn main() -> Result<()> {
 
     if which("rustup").is_ok() {
         steps.push(Step {
-            desc: "Rust：更新 stable 工具链",
+            desc: localized.step_rust_update.clone(),
             fn_name: rustup_update,
         });
     } else {
@@ -858,7 +980,7 @@ fn main() -> Result<()> {
 
     if which("mise").is_ok() {
         steps.push(Step {
-            desc: "Mise：更新托管工具",
+            desc: localized.step_mise_update.clone(),
             fn_name: mise_up,
         });
     } else {
@@ -867,13 +989,16 @@ fn main() -> Result<()> {
 
     let total = steps.len();
     if total == 0 {
-        if supports_color() && !args.no_color {
-            print_warning(&format!(
-                "⚠️ 未检测到可执行步骤。跳过： {}",
-                skipped.join(", ")
-            ));
+        let warning_msg = if system_lang == "zh" {
+            format!("⚠️ 未检测到可执行步骤。跳过： {}", skipped.join(", "))
         } else {
-            println!("⚠️ 未检测到可执行步骤。跳过： {}", skipped.join(", "));
+            format!("⚠️ No executable steps detected. Skipped: {}", skipped.join(", "))
+        };
+        
+        if supports_color() && !args.no_color {
+            print_warning(&warning_msg);
+        } else {
+            println!("{}", warning_msg);
         }
         return Ok(());
     }
@@ -885,10 +1010,11 @@ fn main() -> Result<()> {
     let mut pb_opt = Some(Bar::new(total, "devtool"));
 
     // Always print the numbered steps so the user sees what's going to run.
+    let steps_msg = format!("📋 {}", localized.steps_count.replace("{}", &total.to_string()));
     if supports_color() && !args.no_color {
-        print_info(&format!("📋 将执行 {} 个步骤：", total));
+        print_info(&steps_msg);
     } else {
-        println!("📋 将执行 {} 个步骤：", total);
+        println!("{}", steps_msg);
     }
     for (i, s) in steps.iter().enumerate() {
         println!("  {}) {}", i + 1, s.desc);
@@ -899,7 +1025,7 @@ fn main() -> Result<()> {
 
     // 初始化进度条显示 / Initialize progress bar display
     if let Some(pb) = pb_opt.as_mut() {
-        pb.update_to(0, "准备开始");
+        pb.update_to(0, &localized.progress_preparing);
     }
 
     let mut succ: Vec<&str> = Vec::new();
@@ -936,15 +1062,15 @@ fn main() -> Result<()> {
         if state == "changed" {
             // 根据步骤描述分类：清理操作归类为 actions，其他归类为 updated / Classify by step description: cleanup operations as actions, others as updated
             if step.desc.contains("清理") || step.desc.starts_with("Action：") {
-                actions.push(step.desc);
+                actions.push(&step.desc);
             } else {
-                updated.push(step.desc);
+                updated.push(&step.desc);
             }
-            succ.push(step.desc);
+            succ.push(&step.desc);
         } else if state == "unchanged" {
             // classify actions (contain '清理' or start with 'Action：') separately / 分类动作（包含'清理'或以'Action：'开头）单独分类
             if step.desc.contains("清理") || step.desc.starts_with("Action：") {
-                actions.push(step.desc);
+                actions.push(&step.desc);
             } else {
                 // remove words like '更新'/'升级' from the displayed name / 从显示名称中移除'更新'/'升级'等词汇
                 let mut name = step.desc.to_string();
@@ -956,9 +1082,9 @@ fn main() -> Result<()> {
                     .to_string();
                 unchanged.push(name);
             }
-            succ.push(step.desc);
+            succ.push(&step.desc);
         } else {
-            fail.push(step.desc);
+            fail.push(&step.desc);
         }
 
         // Optionally keep logs
@@ -1017,18 +1143,18 @@ fn main() -> Result<()> {
         // update external progress helper (this also updates the local bar)
         let done_count = (idx + 1) as u64;
         let percent = (100 * (idx + 1) / total) as i32;
-        progress_update(percent, done_count, total as u64, step.desc, &mut pb_opt);
+        progress_update(percent, done_count, total as u64, &step.desc, &mut pb_opt);
 
         // 直接更新进度条显示 / Directly update progress bar display
         if let Some(pb) = pb_opt.as_mut() {
-            pb.update_to(done_count as usize, step.desc);
+            pb.update_to(done_count as usize, &step.desc);
         }
     }
 
     // finish progress helper
     // 显示最终的完成进度条 / Display final completion progress bar
     if let Some(pb) = pb_opt.as_mut() {
-        pb.update_to(total, "完成");
+        pb.update_to(total, &localized.progress_complete);
     }
     println!(); // 换行 / New line
     if !args.dry_run {
@@ -1053,39 +1179,53 @@ fn main() -> Result<()> {
         (_, _, s) => format!("{}秒", s),
     };
 
+    let update_complete_msg = format!(
+        "\n{}{} ({}: {})",
+        localized.update_complete,
+        end_time.format("%Y-%m-%d %H:%M:%S"),
+        localized.time_taken,
+        duration_str
+    );
+    
     if supports_color() && !args.no_color {
-        print_success(&format!(
-            "\n🎉 更新完成：{} (耗时: {})",
-            end_time.format("%Y-%m-%d %H:%M:%S"),
-            duration_str
-        ));
+        print_success(&update_complete_msg);
         if !updated.is_empty() {
-            print_success(&format!("✅ 已更新：{}", updated.join(", ")));
+            let updated_msg = if system_lang == "zh" {
+                format!("✅ 已更新：{}", updated.join(", "))
+            } else {
+                format!("✅ Updated: {}", updated.join(", "))
+            };
+            print_success(&updated_msg);
         } else {
-            print_info("ℹ️ 无更新应用。");
+            print_info(&localized.no_updates);
         }
         if !actions.is_empty() {
-            print_info(&format!("🛠️ 已执行动作：{}", actions.join(", ")));
+            let actions_msg = format!("{}{}", localized.actions_executed, actions.join(", "));
+            print_info(&actions_msg);
         }
         if !unchanged.is_empty() {
-            print_warning(&format!("⚠️ 已是最新：{}", unchanged.join(", ")));
+            let unchanged_msg = format!("{}{}", localized.already_latest, unchanged.join(", "));
+            print_warning(&unchanged_msg);
         }
     } else {
-        println!(
-            "\n🎉 更新完成：{} (耗时: {})",
-            end_time.format("%Y-%m-%d %H:%M:%S"),
-            duration_str
-        );
+        println!("{}", update_complete_msg);
         if !updated.is_empty() {
-            println!("✅ 已更新：{}", updated.join(", "));
+            let updated_msg = if system_lang == "zh" {
+                format!("✅ 已更新：{}", updated.join(", "))
+            } else {
+                format!("✅ Updated: {}", updated.join(", "))
+            };
+            println!("{}", updated_msg);
         } else {
-            println!("ℹ️ 无更新应用。");
+            println!("{}", localized.no_updates);
         }
         if !actions.is_empty() {
-            println!("🛠️ 已执行动作：{}", actions.join(", "));
+            let actions_msg = format!("{}{}", localized.actions_executed, actions.join(", "));
+            println!("{}", actions_msg);
         }
         if !unchanged.is_empty() {
-            println!("⚠️ 已是最新：{}", unchanged.join(", "));
+            let unchanged_msg = format!("{}{}", localized.already_latest, unchanged.join(", "));
+            println!("{}", unchanged_msg);
         }
     }
 
