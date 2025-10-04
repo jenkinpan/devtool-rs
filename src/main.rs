@@ -424,6 +424,44 @@ fn parse_brew_version_line(line: &str) -> Option<(String, String)> {
     }
 }
 
+fn parse_brew_upgrade_output(output: &str) -> Vec<String> {
+    let mut upgrades = Vec::new();
+    let lines: Vec<&str> = output.lines().collect();
+    
+    for line in lines {
+        let line = line.trim();
+        // 匹配 "package old_version -> new_version" 格式
+        if line.contains(" -> ") {
+            if let Some(upgrade) = parse_upgrade_line(line) {
+                upgrades.push(upgrade);
+            }
+        }
+    }
+    
+    upgrades
+}
+
+fn parse_upgrade_line(line: &str) -> Option<String> {
+    // 匹配类似 "mise 2025.10.0 -> 2025.10.1" 的格式
+    if let Some(arrow_pos) = line.find(" -> ") {
+        let before_arrow = &line[..arrow_pos];
+        let after_arrow = &line[arrow_pos + 4..];
+        
+        // 提取包名和版本
+        let parts: Vec<&str> = before_arrow.split_whitespace().collect();
+        if parts.len() >= 2 {
+            let package_name = parts[0];
+            let old_version = parts[1];
+            let new_version = after_arrow.split_whitespace().next().unwrap_or("");
+            
+            if !new_version.is_empty() {
+                return Some(format!("{}: {} → {}", package_name, old_version, new_version));
+            }
+        }
+    }
+    None
+}
+
 fn brew_update(
     runner: &dyn Runner,
     tmpdir: &Path,
@@ -473,35 +511,50 @@ fn brew_upgrade(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_upgrade.log");
 
-    // 获取过时软件的详细信息（JSON格式）
-    let (rc_outdated, out_outdated) = runner.run("brew outdated --json", &logfile, verbose)?;
+    // 首先检查是否有过时的软件包
+    let (rc_outdated, out_outdated) = runner.run("brew outdated", &logfile, verbose)?;
     if rc_outdated != 0 || out_outdated.trim().is_empty() {
         return Ok(("unchanged".to_string(), rc_outdated, logfile));
     }
 
-    // 解析JSON以检查是否真的有过时的软件
-    let has_outdated = out_outdated.contains("\"formulae\":[")
-        && (!out_outdated.contains("\"formulae\":[]") || !out_outdated.contains("\"casks\":[]"));
+    // 检查输出是否包含过时软件包的信息
+    let has_outdated = !out_outdated.trim().is_empty() 
+        && !out_outdated.contains("No outdated packages")
+        && !out_outdated.contains("No outdated formulae");
 
     if !has_outdated {
         return Ok(("unchanged".to_string(), 0, logfile));
     }
 
-    // 记录升级前的版本信息
-    let (_, versions_before) = runner.run("brew list --versions", &logfile, verbose)?;
+    // 记录升级前的版本信息（使用更准确的方法）
+    let (_, versions_before) = runner.run("brew list --formula --versions", &logfile, verbose)?;
 
     // 执行升级
-    let (rc_upgrade, _out_upgrade) = runner.run("brew upgrade --quiet", &logfile, verbose)?;
+    let (rc_upgrade, out_upgrade) = runner.run("brew upgrade", &logfile, verbose)?;
 
     if rc_upgrade != 0 {
         return Ok(("failed".to_string(), rc_upgrade, logfile));
     }
 
     // 记录升级后的版本信息
-    let (_, versions_after) = runner.run("brew list --versions", &logfile, verbose)?;
+    let (_, versions_after) = runner.run("brew list --formula --versions", &logfile, verbose)?;
 
     // 分析升级的软件包
     let upgrade_details = analyze_brew_upgrades(&versions_before, &versions_after);
+
+    // 如果版本比较没有找到变化，但从输出中可以看到升级信息，则解析输出
+    if upgrade_details.is_empty() && out_upgrade.contains("==> Upgrading") {
+        let parsed_upgrades = parse_brew_upgrade_output(&out_upgrade);
+        if !parsed_upgrades.is_empty() {
+            let details_file = tmpdir.join("brew_upgrade_details.txt");
+            if let Ok(mut file) = File::create(&details_file) {
+                for detail in &parsed_upgrades {
+                    let _ = writeln!(file, "{}", detail);
+                }
+            }
+            return Ok(("changed".to_string(), rc_upgrade, logfile));
+        }
+    }
 
     // 将升级详情写入文件供主程序读取
     if !upgrade_details.is_empty() {
