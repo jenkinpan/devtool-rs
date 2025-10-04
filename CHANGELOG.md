@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Replaced unmaintained `atty` dependency with standard library's `IsTerminal` trait
+- Fixed CI security-audit task permission issues
+- Resolved cargo-audit warnings about unmaintained dependencies
+
 ### Added
 - Comprehensive CI/CD pipeline with GitHub Actions
   - Multi-platform testing (Ubuntu, macOS, Windows)

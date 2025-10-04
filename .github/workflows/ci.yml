@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 env:
   CARGO_TERM_COLOR: always
@@ -148,10 +148,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
       - name: Run cargo audit
-        uses: rustsec/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo audit
 
   coverage:
     name: Code Coverage

@@ -1,8 +1,9 @@
 use colored::*;
+use std::io::IsTerminal;
 
 /// 检查终端是否支持颜色输出
 pub fn supports_color() -> bool {
-    atty::is(atty::Stream::Stdout) && std::env::var("NO_COLOR").is_err()
+    std::io::stdout().is_terminal() && std::env::var("NO_COLOR").is_err()
 }
 
 /// 打印成功消息（绿色加粗）
