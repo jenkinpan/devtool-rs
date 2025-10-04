@@ -8,6 +8,8 @@ A modern, efficient developer tool written in Rust that unifies the update proce
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 [![codecov](https://codecov.io/gh/jenkinpan/devtool-rs/branch/main/graph/badge.svg)](https://codecov.io/gh/jenkinpan/devtool-rs)
 
+English | [简体中文](README_zh.md)
+
 ## ✨ Features
 
 - **One-command updates**: Run `devtool` to automatically update multiple supported tools

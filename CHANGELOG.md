@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Chinese README (`README_zh.md`) for Chinese-speaking users
+- Language switcher links in both English and Chinese README files
+
 ### Changed
 - **Major documentation cleanup**: Simplified and reorganized project documentation
   - Removed `docs/` directory and consolidated content into main documentation files
