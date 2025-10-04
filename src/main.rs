@@ -17,7 +17,7 @@ fn get_cache_dir() -> PathBuf {
         .join("devtool")
 }
 
-// 颜色输出函数 - 只对关键信息使用颜色进行区分
+// 颜色输出函数 / Color output functions - 只对关键信息使用颜色进行区分 / Only use colors for key information to distinguish
 fn print_success(msg: &str) {
     if supports_color() {
         println!("{}", msg.green().bold());
@@ -58,7 +58,7 @@ fn print_banner(msg: &str) {
     }
 }
 
-// 检查终端是否支持颜色
+// 检查终端是否支持颜色 / Check if terminal supports colors
 fn supports_color() -> bool {
     atty::is(atty::Stream::Stdout) && std::env::var("NO_COLOR").is_err()
 }
@@ -70,7 +70,7 @@ struct Bar {
 
 impl Bar {
     fn new(total: usize, _desc: &str) -> Self {
-        // 隐藏光标
+        // 隐藏光标 / Hide cursor
         print!("\x1b[?25l");
         io::stdout().flush().ok();
 
@@ -84,7 +84,7 @@ impl Bar {
     fn update_to(&mut self, done: usize, current_step: &str) {
         self.last_done = done;
 
-        // 显示自定义格式的进度条
+        // 显示自定义格式的进度条 / Display custom formatted progress bar
         let percent = if self.total > 0 {
             (done * 100) / self.total
         } else {
@@ -93,7 +93,7 @@ impl Bar {
         let bar_width = 40;
         let filled = (done * bar_width) / self.total.max(1);
 
-        // 根据进度选择颜色（暂时未使用，保留用于未来扩展）
+        // 根据进度选择颜色（暂时未使用，保留用于未来扩展） / Select color based on progress (unused for now, reserved for future expansion)
         let _bar_color = if percent >= 100 {
             "=".green()
         } else if percent >= 50 {
@@ -110,9 +110,9 @@ impl Bar {
             format!("{}{}", filled_bar, empty_bar)
         };
 
-        // 构建进度条字符串，确保长度一致以覆盖之前的内容
+        // 构建进度条字符串，确保长度一致以覆盖之前的内容 / Build progress bar string, ensure consistent length to overwrite previous content
         let progress_line = if supports_color() {
-            // 只对进度条本身使用颜色，数字和文字保持原色
+            // 只对进度条本身使用颜色，数字和文字保持原色 / Only color the progress bar itself, keep numbers and text in original color
             format!(
                 "[{}] {}/{} ({}%) | {}",
                 bar, done, self.total, percent, current_step
@@ -124,7 +124,7 @@ impl Bar {
             )
         };
 
-        // 使用回车符回到行首，然后输出新内容，用空格填充到足够长度
+        // 使用回车符回到行首，然后输出新内容，用空格填充到足够长度 / Use carriage return to go to beginning of line, then output new content, pad with spaces to sufficient length
         print!("\r{:<100}", progress_line);
         io::stdout().flush().ok();
     }
@@ -132,7 +132,7 @@ impl Bar {
 
 impl Drop for Bar {
     fn drop(&mut self) {
-        // 显示光标
+        // 显示光标 / Show cursor
         print!("\x1b[?25h");
         io::stdout().flush().ok();
     }
@@ -154,7 +154,7 @@ fn progress_start(total: u64, desc: &str, _pbar: &mut Option<Bar>) {
         &status_file,
         serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
     );
-    // 进度条描述由 update_to 方法统一管理
+    // 进度条描述由 update_to 方法统一管理 / Progress bar description is managed uniformly by update_to method
 }
 
 fn progress_update(percent: i32, done: u64, total: u64, desc: &str, _pbar: &mut Option<Bar>) {
@@ -173,7 +173,7 @@ fn progress_update(percent: i32, done: u64, total: u64, desc: &str, _pbar: &mut 
         &status_file,
         serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
     );
-    // 进度条描述由 update_to 方法统一管理
+    // 进度条描述由 update_to 方法统一管理 / Progress bar description is managed uniformly by update_to method
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -202,7 +202,7 @@ fn progress_finish() {
         &status_file,
         serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
     );
-    println!(); // 为下一行输出准备
+    println!(); // 为下一行输出准备 / Prepare for next line output
 }
 
 fn progress_status_cmd() -> Result<()> {
@@ -370,25 +370,25 @@ fn run_command(
 }
 
 fn analyze_brew_upgrades(versions_before: &str, versions_after: &str) -> Vec<String> {
-    // 解析版本信息到 HashMap
+    // 解析版本信息到 HashMap / Parse version information to HashMap
     let mut before_map: HashMap<String, String> = HashMap::new();
     let mut after_map: HashMap<String, String> = HashMap::new();
 
-    // 解析升级前的版本
+    // 解析升级前的版本 / Parse versions before upgrade
     for line in versions_before.lines() {
         if let Some((name, version)) = parse_brew_version_line(line) {
             before_map.insert(name, version);
         }
     }
 
-    // 解析升级后的版本
+    // 解析升级后的版本 / Parse versions after upgrade
     for line in versions_after.lines() {
         if let Some((name, version)) = parse_brew_version_line(line) {
             after_map.insert(name, version);
         }
     }
 
-    // 找出升级的软件包
+    // 找出升级的软件包 / Find upgraded packages
     let mut upgrades = Vec::new();
     for (name, after_version) in &after_map {
         if let Some(before_version) = before_map.get(name) {
@@ -416,7 +416,7 @@ fn parse_brew_upgrade_output(output: &str) -> Vec<String> {
 
     for line in lines {
         let line = line.trim();
-        // 匹配 "package old_version -> new_version" 格式
+        // 匹配 "package old_version -> new_version" 格式 / Match "package old_version -> new_version" format
         if line.contains(" -> ") {
             if let Some(upgrade) = parse_upgrade_line(line) {
                 upgrades.push(upgrade);
@@ -428,12 +428,12 @@ fn parse_brew_upgrade_output(output: &str) -> Vec<String> {
 }
 
 fn parse_upgrade_line(line: &str) -> Option<String> {
-    // 匹配类似 "mise 2025.10.0 -> 2025.10.1" 的格式
+    // 匹配类似 "mise 2025.10.0 -> 2025.10.1" 的格式 / Match format like "mise 2025.10.0 -> 2025.10.1"
     if let Some(arrow_pos) = line.find(" -> ") {
         let before_arrow = &line[..arrow_pos];
         let after_arrow = &line[arrow_pos + 4..];
 
-        // 提取包名和版本
+        // 提取包名和版本 / Extract package name and version
         let parts: Vec<&str> = before_arrow.split_whitespace().collect();
         if parts.len() >= 2 {
             let package_name = parts[0];
@@ -459,21 +459,21 @@ fn brew_update(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_update.log");
 
-    // 获取更新前的 git commit hash
+    // 获取更新前的 git commit hash / Get git commit hash before update
     let (_, commit_before) = runner.run(
         "cd $(brew --repository) && git log -1 --format='%H' 2>/dev/null || echo 'unknown'",
         &logfile,
         verbose,
     )?;
 
-    // 执行更新
+    // 执行更新 / Execute update
     let (rc_update, out_update) = runner.run("brew update --quiet", &logfile, verbose)?;
 
     if rc_update != 0 {
         return Ok(("failed".to_string(), rc_update, logfile));
     }
 
-    // 获取更新后的 git commit hash
+    // 获取更新后的 git commit hash / Get git commit hash after update
     let (_, commit_after) = runner.run(
         "cd $(brew --repository) && git log -1 --format='%H' 2>/dev/null || echo 'unknown'",
         &logfile,
@@ -500,13 +500,13 @@ fn brew_upgrade(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_upgrade.log");
 
-    // 首先检查是否有过时的软件包
+    // 首先检查是否有过时的软件包 / First check if there are outdated packages
     let (rc_outdated, out_outdated) = runner.run("brew outdated", &logfile, verbose)?;
     if rc_outdated != 0 || out_outdated.trim().is_empty() {
         return Ok(("unchanged".to_string(), rc_outdated, logfile));
     }
 
-    // 检查输出是否包含过时软件包的信息
+    // 检查输出是否包含过时软件包的信息 / Check if output contains outdated package information
     let has_outdated = !out_outdated.trim().is_empty()
         && !out_outdated.contains("No outdated packages")
         && !out_outdated.contains("No outdated formulae");
@@ -515,7 +515,7 @@ fn brew_upgrade(
         return Ok(("unchanged".to_string(), 0, logfile));
     }
 
-    // 记录升级前的版本信息（使用更准确的方法）
+    // 记录升级前的版本信息（使用更准确的方法） / Record version information before upgrade (using more accurate method)
     let (_, versions_before) = runner.run("brew list --formula --versions", &logfile, verbose)?;
 
     // 执行升级
@@ -525,13 +525,13 @@ fn brew_upgrade(
         return Ok(("failed".to_string(), rc_upgrade, logfile));
     }
 
-    // 记录升级后的版本信息
+    // 记录升级后的版本信息 / Record version information after upgrade
     let (_, versions_after) = runner.run("brew list --formula --versions", &logfile, verbose)?;
 
-    // 分析升级的软件包
+    // 分析升级的软件包 / Analyze upgraded packages
     let upgrade_details = analyze_brew_upgrades(&versions_before, &versions_after);
 
-    // 如果版本比较没有找到变化，但从输出中可以看到升级信息，则解析输出
+    // 如果版本比较没有找到变化，但从输出中可以看到升级信息，则解析输出 / If version comparison finds no changes but output shows upgrade info, parse the output
     if upgrade_details.is_empty() && out_upgrade.contains("==> Upgrading") {
         let parsed_upgrades = parse_brew_upgrade_output(&out_upgrade);
         if !parsed_upgrades.is_empty() {
@@ -545,7 +545,7 @@ fn brew_upgrade(
         }
     }
 
-    // 将升级详情写入文件供主程序读取
+    // 将升级详情写入文件供主程序读取 / Write upgrade details to file for main program to read
     if !upgrade_details.is_empty() {
         let details_file = tmpdir.join("brew_upgrade_details.txt");
         if let Ok(mut file) = File::create(&details_file) {
@@ -590,19 +590,19 @@ fn rustup_update(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("rustup_update.log");
 
-    // 获取更新前的版本信息
+    // 获取更新前的版本信息 / Get version information before update
     let (_, version_before) =
         runner.run("rustc --version", &tmpdir.join("rustc_before.log"), false)?;
     let version_before = version_before.trim().to_string();
 
-    // 执行更新
+    // 执行更新 / Execute update
     let (rc, out) = runner.run("rustup update stable", &logfile, verbose)?;
 
     if rc != 0 {
         return Ok(("failed".to_string(), rc, logfile));
     }
 
-    // 获取更新后的版本信息
+    // 获取更新后的版本信息 / Get version information after update
     let (_, version_after) = run_command(
         "rustc --version",
         &tmpdir.join("rustc_after.log"),
@@ -613,7 +613,7 @@ fn rustup_update(
     .unwrap_or((1, String::new()));
     let version_after = version_after.trim().to_string();
 
-    // 检查版本是否真的有变化
+    // 检查版本是否真的有变化 / Check if version actually changed
     let out_text = out.to_lowercase();
     let is_unchanged = out_text.contains("unchanged")
         || out_text.contains("up to date")
@@ -622,7 +622,7 @@ fn rustup_update(
     let state = if is_unchanged {
         "unchanged"
     } else {
-        // 解析版本信息并保存升级详情
+        // 解析版本信息并保存升级详情 / Parse version information and save upgrade details
         if let (Some(before), Some(after)) = (
             extract_rust_version(&version_before),
             extract_rust_version(&version_after),
@@ -638,7 +638,7 @@ fn rustup_update(
 }
 
 fn extract_rust_version(version_output: &str) -> Option<String> {
-    // 从 "rustc 1.90.0 (1159e78c4 2025-09-14)" 提取 "1.90.0"
+    // 从 "rustc 1.90.0 (1159e78c4 2025-09-14)" 提取 "1.90.0" / Extract "1.90.0" from "rustc 1.90.0 (1159e78c4 2025-09-14)"
     version_output
         .split_whitespace()
         .nth(1)
@@ -649,14 +649,14 @@ fn extract_rust_version(version_output: &str) -> Option<String> {
 fn parse_mise_versions(output: &str) -> HashMap<String, String> {
     let mut versions = HashMap::new();
 
-    // 跳过 JSON 格式，只使用文本格式（更简单可靠）
+    // 跳过 JSON 格式，只使用文本格式（更简单可靠） / Skip JSON format, only use text format (simpler and more reliable)
     if output.trim().starts_with('{') {
-        // JSON 解析较复杂，当前使用文本格式命令
+        // JSON 解析较复杂，当前使用文本格式命令 / JSON parsing is complex, currently using text format commands
         return versions;
     }
 
-    // 解析文本格式: "node    22.20.0  ~/.tool-versions 22.20.0"
-    // 或: "node@22.20.0"
+    // 解析文本格式: "node    22.20.0  ~/.tool-versions 22.20.0" / Parse text format: "node    22.20.0  ~/.tool-versions 22.20.0"
+    // 或: "node@22.20.0" / Or: "node@22.20.0"
     for line in output.lines() {
         let line = line.trim();
         if line.is_empty()
@@ -667,7 +667,7 @@ fn parse_mise_versions(output: &str) -> HashMap<String, String> {
             continue;
         }
 
-        // 尝试解析 "tool@version" 格式
+        // 尝试解析 "tool@version" 格式 / Try to parse "tool@version" format
         if let Some((name, version)) = line.split_once('@') {
             let name = name.trim().to_string();
             let version = version
@@ -682,12 +682,12 @@ fn parse_mise_versions(output: &str) -> HashMap<String, String> {
             continue;
         }
 
-        // 尝试解析空格分隔的格式: "node    24.9.0  ~/.config/mise/config.toml  latest"
+        // 尝试解析空格分隔的格式: "node    24.9.0  ~/.config/mise/config.toml  latest" / Try to parse space-separated format: "node    24.9.0  ~/.config/mise/config.toml  latest"
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             let name = parts[0].to_string();
             let version = parts[1].to_string();
-            // 确保版本看起来像版本号（包含数字和点）
+            // 确保版本看起来像版本号（包含数字和点） / Ensure version looks like a version number (contains numbers and dots)
             if version.contains(|c: char| c.is_numeric()) {
                 versions.insert(name, version);
             }
@@ -705,15 +705,15 @@ fn mise_up(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("mise_up.log");
 
-    // 获取升级前的版本信息（使用文本格式，更容易解析）
+    // 获取升级前的版本信息（使用文本格式，更容易解析） / Get version information before upgrade (using text format, easier to parse)
     let (_, versions_before) =
         runner.run("mise ls --current", &tmpdir.join("mise_before.log"), false)?;
 
-    // 执行更新
+    // 执行更新 / Execute update
     let (rc, out) = runner.run("mise up", &logfile, verbose)?;
     let outl = out.to_lowercase();
 
-    // 获取升级后的版本信息
+    // 获取升级后的版本信息 / Get version information after upgrade
     let (_, versions_after) =
         runner.run("mise ls --current", &tmpdir.join("mise_after.log"), false)?;
 
@@ -756,7 +756,7 @@ fn mise_up(
             }
         }
 
-        // 如果版本比较没有找到变化，但输出显示有更新，则从输出中提取信息
+        // 如果版本比较没有找到变化，但输出显示有更新，则从输出中提取信息 / If version comparison finds no changes but output shows updates, extract info from output
         if concise.is_empty() && !short_entries.is_empty() {
             for (name, vers) in &short_entries {
                 let mut seen: Vec<String> = Vec::new();
@@ -766,7 +766,7 @@ fn mise_up(
                     }
                 }
                 if seen.len() >= 2 {
-                    // 假设第一个是旧版本，最后一个是新版本
+                    // 假设第一个是旧版本，最后一个是新版本 / Assume first is old version, last is new version
                     concise.push(format!(
                         "{}: {} → {}",
                         name,
@@ -783,7 +783,7 @@ fn mise_up(
             let shortfile = tmpdir.join("mise_short_updates.txt");
             let f = File::create(&shortfile).ok();
             if let Some(mut fh) = f {
-                // 每个工具一行，与 Homebrew 和 Rustup 保持一致
+                // 每个工具一行，与 Homebrew 和 Rustup 保持一致 / One line per tool, consistent with Homebrew and Rustup
                 for entry in &concise {
                     let _ = writeln!(fh, "{}", entry);
                 }
@@ -799,7 +799,7 @@ fn mise_up(
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // 初始化颜色支持
+    // 初始化颜色支持 / Initialize color support
     if args.no_color {
         colored::control::set_override(false);
     } else if supports_color() {
@@ -811,7 +811,7 @@ fn main() -> Result<()> {
         return progress_status_cmd();
     }
 
-    // 记录开始时间
+    // 记录开始时间 / Record start time
     let start_time = chrono::Local::now();
 
     if !args.no_banner {
@@ -898,7 +898,7 @@ fn main() -> Result<()> {
     // Start external progress helper
     progress_start(total as u64, "devtool", &mut pb_opt);
 
-    // 初始化进度条显示
+    // 初始化进度条显示 / Initialize progress bar display
     if let Some(pb) = pb_opt.as_mut() {
         pb.update_to(0, "准备开始");
     }
@@ -935,7 +935,7 @@ fn main() -> Result<()> {
         };
 
         if state == "changed" {
-            // 根据步骤描述分类：清理操作归类为 actions，其他归类为 updated
+            // 根据步骤描述分类：清理操作归类为 actions，其他归类为 updated / Classify by step description: cleanup operations as actions, others as updated
             if step.desc.contains("清理") || step.desc.starts_with("Action：") {
                 actions.push(step.desc);
             } else {
@@ -943,11 +943,11 @@ fn main() -> Result<()> {
             }
             succ.push(step.desc);
         } else if state == "unchanged" {
-            // classify actions (contain '清理' or start with 'Action：') separately
+            // classify actions (contain '清理' or start with 'Action：') separately / 分类动作（包含'清理'或以'Action：'开头）单独分类
             if step.desc.contains("清理") || step.desc.starts_with("Action：") {
                 actions.push(step.desc);
             } else {
-                // remove words like '更新'/'升级' from the displayed name
+                // remove words like '更新'/'升级' from the displayed name / 从显示名称中移除'更新'/'升级'等词汇
                 let mut name = step.desc.to_string();
                 name = name
                     .replace("更新", "")
@@ -1020,23 +1020,23 @@ fn main() -> Result<()> {
         let percent = (100 * (idx + 1) / total) as i32;
         progress_update(percent, done_count, total as u64, step.desc, &mut pb_opt);
 
-        // 直接更新进度条显示
+        // 直接更新进度条显示 / Directly update progress bar display
         if let Some(pb) = pb_opt.as_mut() {
             pb.update_to(done_count as usize, step.desc);
         }
     }
 
     // finish progress helper
-    // 显示最终的完成进度条
+    // 显示最终的完成进度条 / Display final completion progress bar
     if let Some(pb) = pb_opt.as_mut() {
         pb.update_to(total, "完成");
     }
-    println!(); // 换行
+    println!(); // 换行 / New line
     if !args.dry_run {
         progress_finish();
     }
 
-    // 计算总耗时
+    // 计算总耗时 / Calculate total time spent
     let end_time = chrono::Local::now();
     let duration = end_time.signed_duration_since(start_time);
     let duration_str = match (
