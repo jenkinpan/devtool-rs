@@ -2,10 +2,24 @@
 name = "devtool"
 version = "0.3.3"
 edition = "2021"
-description = "A CLI tool for development in update rustup toolchain , mise maintained tools and hombrew packages."
+authors = ["jenkinpan <jenkinpan0628@gmail.com>"]
+description = "A CLI tool for development in update rustup toolchain, mise maintained tools and homebrew packages."
+readme = "README.md"
+homepage = "https://github.com/jenkinpan/devtool-rs"
 repository = "https://github.com/jenkinpan/devtool-rs"
+documentation = "https://docs.rs/devtool"
 license = "MIT OR Apache-2.0"
-keywords = ["cli", "development", "rust"]
+keywords = [
+    "cli",
+    "development",
+    "rust",
+    "homebrew",
+    "rustup",
+    "mise",
+    "update",
+    "toolchain",
+]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0"
