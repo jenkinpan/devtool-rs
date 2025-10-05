@@ -5,13 +5,14 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   build-and-release:
     name: Build and Release for ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
-      actions: read
     strategy:
       matrix:
         include:
