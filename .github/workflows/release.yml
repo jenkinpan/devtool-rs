@@ -191,24 +191,28 @@ jobs:
           sed -i "s|SHA256_ARM64_LINUX_PLACEHOLDER|$SHA256_ARM64_LINUX|g" Formula/devtool.rb
           sed -i "s|SHA256_X86_64_LINUX_PLACEHOLDER|$SHA256_X86_64_LINUX|g" Formula/devtool.rb
 
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.TAP_DEPLOY_KEY }}
+
       - name: Commit and push changes
         run: |
           cd homebrew-tap
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Configure Git to use GitHub Token for authentication
-          git config --local credential.helper store
-          echo "https://${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
-
+          
+          # Configure Git to use SSH for GitHub
+          git config --local url."git@github.com:".insteadOf "https://github.com/"
+          
           git add Formula/devtool.rb
           git commit -m "chore: update devtool to v${{ steps.version.outputs.version }}" || echo "No changes to commit"
-
+          
           # Check current branch and remote branches
           echo "Current branch: $(git branch --show-current)"
           echo "Remote branches:"
           git branch -r
-
+          
           # Try to push to master (since that's the only branch)
           echo "Attempting to push to master..."
           if git push origin master; then
