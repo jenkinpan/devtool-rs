@@ -45,7 +45,7 @@ jobs:
           echo "GitHub event inputs: ${{ github.event.inputs }}"
           echo "GitHub ref: ${{ github.ref }}"
           echo "GitHub ref name: ${{ github.ref_name }}"
-          
+
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
             echo "Using input version: $VERSION"
