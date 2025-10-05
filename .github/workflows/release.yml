@@ -1,13 +1,16 @@
 name: Create GitHub Release
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_run:
+    workflows: ["Publish to Crates.io"]
+    types: [completed]
+    branches: [main]
 
 jobs:
   build-and-release:
     name: Build and Release for ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       matrix:
         include:
