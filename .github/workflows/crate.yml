@@ -52,7 +52,7 @@ jobs:
         run: |
           echo "Triggering GitHub Release workflow..."
           echo "Repository: ${{ github.repository }}"
-          echo "Ref: main"
+          echo "Ref: master"
 
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "Triggering release for version: $VERSION"
@@ -62,7 +62,7 @@ jobs:
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/release.yml/dispatches \
-            -d "{\"ref\":\"main\",\"inputs\":{\"version\":\"$VERSION\"}}")
+            -d "{\"ref\":\"master\",\"inputs\":{\"version\":\"$VERSION\"}}")
 
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
