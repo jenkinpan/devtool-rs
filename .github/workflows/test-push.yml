@@ -18,15 +18,19 @@ jobs:
           path: homebrew-tap
           fetch-depth: 0
 
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.TAP_DEPLOY_KEY }}
+
       - name: Test Git Configuration
         run: |
           cd homebrew-tap
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Configure Git to use GitHub Token for authentication
-          git config --local credential.helper store
-          echo "https://${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
+          # Configure Git to use SSH for GitHub
+          git config --local url."git@github.com:".insteadOf "https://github.com/"
           
           echo "Current branch: $(git branch --show-current)"
           echo "Remote branches:"
@@ -40,11 +44,11 @@ jobs:
           # Create a test file
           echo "# Test push $(date)" >> test-push.txt
           git add test-push.txt
-          git commit -m "test: verify push capability" || echo "No changes to commit"
+          git commit -m "test: verify SSH push capability" || echo "No changes to commit"
           
-          echo "Attempting to push to master..."
+          echo "Attempting to push to master using SSH..."
           if git push origin master; then
-            echo "✅ Successfully pushed to master"
+            echo "✅ Successfully pushed to master using SSH"
           else
             echo "❌ Failed to push to master"
             echo "Git status:"
