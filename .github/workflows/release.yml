@@ -2,6 +2,11 @@ name: Create GitHub Release
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -111,12 +116,15 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          if [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
           else
             VERSION="0.4.5"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
 
       - name: Checkout tap repository
         uses: actions/checkout@v4
