@@ -52,20 +52,20 @@ jobs:
           echo "Triggering GitHub Release workflow..."
           echo "Repository: ${{ github.repository }}"
           echo "Ref: main"
-          
+
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/release.yml/dispatches \
             -d '{"ref":"main"}')
-          
+
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
-          
+
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
-          
+
           if [ $HTTP_STATUS -eq 204 ]; then
             echo "✅ Successfully triggered GitHub Release workflow"
           else
