@@ -65,7 +65,7 @@ jobs:
           # Homebrew format: artifact-target.tar.gz (no version in filename)
           ASSET_NAME="${{ matrix.artifact_name }}-${{ matrix.target }}.tar.gz"
           echo "asset_name=$ASSET_NAME" >> $GITHUB_OUTPUT
-          
+
           cd target/${{ matrix.target }}/release
           tar czf $ASSET_NAME ${{ matrix.artifact_name }}
           cd -
