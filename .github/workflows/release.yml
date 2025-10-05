@@ -59,16 +59,21 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
 
       - name: Package binary
+        id: package
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ASSET_NAME="${{ matrix.artifact_name }}-v$VERSION-${{ matrix.target }}.tar.gz"
+          echo "asset_name=$ASSET_NAME" >> $GITHUB_OUTPUT
+          
           cd target/${{ matrix.target }}/release
-          tar czf ${{ matrix.asset_name }} ${{ matrix.artifact_name }}
+          tar czf $ASSET_NAME ${{ matrix.artifact_name }}
           cd -
-          mv target/${{ matrix.target }}/release/${{ matrix.asset_name }} .
+          mv target/${{ matrix.target }}/release/$ASSET_NAME .
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ matrix.asset_name }}
+          files: ${{ steps.package.outputs.asset_name }}
           tag_name: ${{ github.ref_name || 'v0.4.5' }}
           name: Release ${{ github.ref_name || 'v0.4.5' }}
           draft: false
@@ -79,9 +84,9 @@ jobs:
       - name: Calculate SHA256
         id: sha256
         run: |
-          SHA256=$(shasum -a 256 ${{ matrix.asset_name }} | cut -d ' ' -f 1)
+          SHA256=$(shasum -a 256 ${{ steps.package.outputs.asset_name }} | cut -d ' ' -f 1)
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-          echo "SHA256 for ${{ matrix.asset_name }}: $SHA256"
+          echo "SHA256 for ${{ steps.package.outputs.asset_name }}: $SHA256"
 
       - name: Save SHA256 to artifact
         run: |
@@ -192,7 +197,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/devtool.rb
           git commit -m "chore: update devtool to v${{ steps.version.outputs.version }}" || echo "No changes to commit"
-          
+
           # Try to push to master first, then main
           if git push origin master 2>/dev/null; then
             echo "Successfully pushed to master"
