@@ -123,15 +123,22 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
+          echo "GitHub event inputs: ${{ github.event.inputs }}"
+          echo "GitHub ref: ${{ github.ref }}"
+          echo "GitHub ref name: ${{ github.ref_name }}"
+          
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
+            echo "Using input version: $VERSION"
           elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
+            echo "Using tag version: $VERSION"
           else
-            VERSION="0.4.5"
+            VERSION="0.5.1"
+            echo "Using default version: $VERSION"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION"
+          echo "Final extracted version: $VERSION"
 
       - name: Checkout tap repository
         uses: actions/checkout@v4
