@@ -1,6 +1,6 @@
 [package]
 name = "devtool"
-version = "0.4.5"
+version = "0.4.6"
 edition = "2021"
 description = "A CLI tool for development in update rustup toolchain, mise maintained tools and homebrew packages."
 documentation = "https://docs.rs/devtool"
@@ -10,6 +10,10 @@ repository = "https://github.com/jenkinpan/devtool-rs"
 license = "MIT OR Apache-2.0"
 keywords = ["cli", "homebrew", "mise", "rust", "rustup"]
 categories = ["command-line-utilities", "development-tools"]
+
+[[bench]]
+harness = false
+name = "command_execution"
 
 [dependencies]
 anyhow = "1.0"
@@ -26,7 +30,3 @@ which = "8.0"
 
 [dev-dependencies]
 criterion = "0.5"
-
-[[bench]]
-name = "command_execution"
-harness = false
