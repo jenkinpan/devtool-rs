@@ -115,19 +115,16 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="0.4.5"
           else
             VERSION="0.4.5"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION"
 
       - name: Checkout tap repository
         uses: actions/checkout@v4
         with:
           repository: jenkinpan/homebrew-tap
-          ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           path: homebrew-tap
           fetch-depth: 0
 
