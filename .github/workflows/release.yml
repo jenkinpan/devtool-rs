@@ -172,11 +172,11 @@ jobs:
           end
           FORMULA_EOF
 
-          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" Formula/devtool.rb
-          sed -i "s/SHA256_ARM64_MACOS_PLACEHOLDER/$SHA256_ARM64_MACOS/g" Formula/devtool.rb
-          sed -i "s/SHA256_X86_64_MACOS_PLACEHOLDER/$SHA256_X86_64_MACOS/g" Formula/devtool.rb
-          sed -i "s/SHA256_ARM64_LINUX_PLACEHOLDER/$SHA256_ARM64_LINUX/g" Formula/devtool.rb
-          sed -i "s/SHA256_X86_64_LINUX_PLACEHOLDER/$SHA256_X86_64_LINUX/g" Formula/devtool.rb
+          sed -i "s|VERSION_PLACEHOLDER|$VERSION|g" Formula/devtool.rb
+          sed -i "s|SHA256_ARM64_MACOS_PLACEHOLDER|$SHA256_ARM64_MACOS|g" Formula/devtool.rb
+          sed -i "s|SHA256_X86_64_MACOS_PLACEHOLDER|$SHA256_X86_64_MACOS|g" Formula/devtool.rb
+          sed -i "s|SHA256_ARM64_LINUX_PLACEHOLDER|$SHA256_ARM64_LINUX|g" Formula/devtool.rb
+          sed -i "s|SHA256_X86_64_LINUX_PLACEHOLDER|$SHA256_X86_64_LINUX|g" Formula/devtool.rb
 
       - name: Commit and push changes
         run: |
