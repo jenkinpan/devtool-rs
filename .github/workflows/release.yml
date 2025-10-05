@@ -39,13 +39,32 @@ jobs:
             asset_name: devtool-aarch64-unknown-linux-gnu.tar.gz
 
     steps:
-      - name: Get version from build job
+      - name: Extract version from tag
         id: version
         run: |
-          # Get version from the build job outputs
-          VERSION="${{ needs.build-and-release.outputs.version }}"
+          echo "GitHub event inputs: ${{ github.event.inputs }}"
+          echo "GitHub ref: ${{ github.ref }}"
+          echo "GitHub ref name: ${{ github.ref_name }}"
+          
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Using input version: $VERSION"
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "Using tag version: $VERSION"
+          else
+            # Get the latest tag
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -n "$LATEST_TAG" ]; then
+              VERSION=${LATEST_TAG#v}
+              echo "Using latest tag version: $VERSION"
+            else
+              VERSION="0.5.1"
+              echo "Using default version: $VERSION"
+            fi
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Using version from build job: $VERSION"
+          echo "Final extracted version: $VERSION"
 
       - name: Checkout code
         uses: actions/checkout@v4
