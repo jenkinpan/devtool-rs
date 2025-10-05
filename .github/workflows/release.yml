@@ -196,15 +196,30 @@ jobs:
           cd homebrew-tap
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Configure Git to use GitHub Token for authentication
+          git config --local credential.helper store
+          echo "https://${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
+          
           git add Formula/devtool.rb
           git commit -m "chore: update devtool to v${{ steps.version.outputs.version }}" || echo "No changes to commit"
-
-          # Try to push to master first, then main
-          if git push origin master 2>/dev/null; then
-            echo "Successfully pushed to master"
-          elif git push origin main 2>/dev/null; then
-            echo "Successfully pushed to main"
+          
+          # Check current branch and remote branches
+          echo "Current branch: $(git branch --show-current)"
+          echo "Remote branches:"
+          git branch -r
+          
+          # Try to push to master (since that's the only branch)
+          echo "Attempting to push to master..."
+          if git push origin master; then
+            echo "✅ Successfully pushed to master"
           else
-            echo "Failed to push to both master and main"
+            echo "❌ Failed to push to master"
+            echo "Git status:"
+            git status
+            echo "Git log:"
+            git log --oneline -5
+            echo "Remote info:"
+            git remote -v
             exit 1
           fi
