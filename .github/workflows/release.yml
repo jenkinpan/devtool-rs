@@ -120,15 +120,11 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Setup SSH for homebrew-tap
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.GITHUB_ACTIONS_DEPLOY_KEY }}
-
       - name: Checkout tap repository
         uses: actions/checkout@v4
         with:
           repository: jenkinpan/homebrew-tap
+          ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
           path: homebrew-tap
           fetch-depth: 0
 
