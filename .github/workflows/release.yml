@@ -16,6 +16,8 @@ jobs:
   build-and-release:
     name: Build and Release for ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     strategy:
       matrix:
         include:
@@ -37,6 +39,14 @@ jobs:
             asset_name: devtool-aarch64-unknown-linux-gnu.tar.gz
 
     steps:
+      - name: Get version from build job
+        id: version
+        run: |
+          # Get version from the build job outputs
+          VERSION="${{ needs.build-and-release.outputs.version }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Using version from build job: $VERSION"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -120,25 +130,13 @@ jobs:
           echo "arm64_linux=$ARM64_LINUX" >> $GITHUB_OUTPUT
           echo "x86_64_linux=$X86_64_LINUX" >> $GITHUB_OUTPUT
 
-      - name: Extract version from tag
+      - name: Get version from build job
         id: version
         run: |
-          echo "GitHub event inputs: ${{ github.event.inputs }}"
-          echo "GitHub ref: ${{ github.ref }}"
-          echo "GitHub ref name: ${{ github.ref_name }}"
-
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-            echo "Using input version: $VERSION"
-          elif [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-            echo "Using tag version: $VERSION"
-          else
-            VERSION="0.5.1"
-            echo "Using default version: $VERSION"
-          fi
+          # Get version from the build job outputs
+          VERSION="${{ needs.build-and-release.outputs.version }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Final extracted version: $VERSION"
+          echo "Using version from build job: $VERSION"
 
       - name: Checkout tap repository
         uses: actions/checkout@v4
