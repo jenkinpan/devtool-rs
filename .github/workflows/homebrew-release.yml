@@ -1,0 +1,124 @@
+name: Homebrew Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-release:
+    name: Build and Release for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: devtool
+            asset_name: devtool-aarch64-apple-darwin.tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: devtool
+            asset_name: devtool-x86_64-apple-darwin.tar.gz
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: devtool
+            asset_name: devtool-x86_64-unknown-linux-gnu.tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: devtool
+            asset_name: devtool-aarch64-unknown-linux-gnu.tar.gz
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          fi
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Package binary
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ${{ matrix.asset_name }} ${{ matrix.artifact_name }}
+          cd -
+          mv target/${{ matrix.target }}/release/${{ matrix.asset_name }} .
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ matrix.asset_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          SHA256=$(shasum -a 256 ${{ matrix.asset_name }} | cut -d ' ' -f 1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256 for ${{ matrix.asset_name }}: $SHA256"
+
+      - name: Save SHA256 to artifact
+        run: |
+          echo "${{ steps.sha256.outputs.sha256 }}" > ${{ matrix.target }}.sha256
+
+      - name: Upload SHA256 artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: sha256-${{ matrix.target }}
+          path: ${{ matrix.target }}.sha256
+
+  update-homebrew-tap:
+    name: Update Homebrew Tap
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all SHA256 artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Read SHA256 values
+        id: sha256
+        run: |
+          ARM64_MACOS=$(cat sha256-aarch64-apple-darwin/aarch64-apple-darwin.sha256)
+          X86_64_MACOS=$(cat sha256-x86_64-apple-darwin/x86_64-apple-darwin.sha256)
+          ARM64_LINUX=$(cat sha256-aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu.sha256)
+          X86_64_LINUX=$(cat sha256-x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu.sha256)
+
+          echo "arm64_macos=$ARM64_MACOS" >> $GITHUB_OUTPUT
+          echo "x86_64_macos=$X86_64_MACOS" >> $GITHUB_OUTPUT
+          echo "arm64_linux=$ARM64_LINUX" >> $GITHUB_OUTPUT
+          echo "x86_64_linux=$X86_64_LINUX" >> $GITHUB_OUTPUT
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Trigger Homebrew Tap Update
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          repository: jenkinpan/homebrew-tap
+          event-type: update-devtool
+          client-payload: |
+            {
+              "version": "${{ steps.version.outputs.version }}",
+              "sha256_arm64_macos": "${{ steps.sha256.outputs.arm64_macos }}",
+              "sha256_x86_64_macos": "${{ steps.sha256.outputs.x86_64_macos }}",
+              "sha256_arm64_linux": "${{ steps.sha256.outputs.arm64_linux }}",
+              "sha256_x86_64_linux": "${{ steps.sha256.outputs.x86_64_linux }}"
+            }
