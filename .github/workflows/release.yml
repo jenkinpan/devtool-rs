@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release'
+        description: "Version to release"
         required: false
         type: string
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   build-and-release:
@@ -191,4 +192,13 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/devtool.rb
           git commit -m "chore: update devtool to v${{ steps.version.outputs.version }}" || echo "No changes to commit"
-          git push origin master || git push origin main
+          
+          # Try to push to master first, then main
+          if git push origin master 2>/dev/null; then
+            echo "Successfully pushed to master"
+          elif git push origin main 2>/dev/null; then
+            echo "Successfully pushed to main"
+          else
+            echo "Failed to push to both master and main"
+            exit 1
+          fi
