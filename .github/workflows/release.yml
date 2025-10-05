@@ -113,7 +113,7 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          if [ -n "${{ github.ref_name }}" ]; then
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
           else
             VERSION="0.4.5"
