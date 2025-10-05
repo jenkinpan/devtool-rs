@@ -1,0 +1,57 @@
+name: Test Homebrew Push
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: jenkinpan/homebrew-tap
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: homebrew-tap
+          fetch-depth: 0
+
+      - name: Test Git Configuration
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Configure Git to use GitHub Token for authentication
+          git config --local credential.helper store
+          echo "https://${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
+          
+          echo "Current branch: $(git branch --show-current)"
+          echo "Remote branches:"
+          git branch -r
+          echo "Remote info:"
+          git remote -v
+
+      - name: Test Push
+        run: |
+          cd homebrew-tap
+          # Create a test file
+          echo "# Test push $(date)" >> test-push.txt
+          git add test-push.txt
+          git commit -m "test: verify push capability" || echo "No changes to commit"
+          
+          echo "Attempting to push to master..."
+          if git push origin master; then
+            echo "✅ Successfully pushed to master"
+          else
+            echo "❌ Failed to push to master"
+            echo "Git status:"
+            git status
+            echo "Git log:"
+            git log --oneline -5
+            echo "Remote info:"
+            git remote -v
+            exit 1
+          fi
