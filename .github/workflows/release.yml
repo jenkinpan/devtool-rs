@@ -9,6 +9,9 @@ jobs:
   build-and-release:
     name: Build and Release for ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      actions: read
     strategy:
       matrix:
         include:
@@ -62,8 +65,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ matrix.asset_name }}
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name || 'v0.4.5' }}
+          name: Release ${{ github.ref_name || 'v0.4.5' }}
           draft: false
           prerelease: false
         env:
@@ -110,7 +113,11 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          if [ -n "${{ github.ref_name }}" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="0.4.5"  # Default version for manual trigger
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Checkout tap repository
@@ -119,6 +126,7 @@ jobs:
           repository: jenkinpan/homebrew-tap
           ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
           path: homebrew-tap
+          fetch-depth: 0
 
       - name: Update formula
         env:
