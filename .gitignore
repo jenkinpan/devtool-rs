@@ -3,3 +3,4 @@ target/
 *.orig
 *.backup
 Cargo.toml.orig
+Cargo.lock
