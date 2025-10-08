@@ -1,5 +1,35 @@
 # devtool 🚀
 
+<!--toc:start-->
+
+- [devtool 🚀](#devtool-🚀)
+  - [✨ 特性](#特性)
+  - [🛠️ 支持的工具](#🛠️-支持的工具)
+  - [📦 安装](#📦-安装)
+    - [从 crates.io 安装（推荐）](#从-cratesio-安装推荐)
+    - [从源码安装](#从源码安装)
+  - [🚀 使用](#🚀-使用)
+    - [基本用法](#基本用法)
+    - [命令行选项](#命令行选项)
+    - [示例](#示例)
+  - [🔧 故障排查](#🔧-故障排查)
+    - [找不到命令](#找不到命令)
+    - [权限错误](#权限错误)
+    - [未检测到工具](#未检测到工具)
+    - [更新失败](#更新失败)
+    - [语言/区域设置问题](#语言区域设置问题)
+  - [💡 技巧和窍门](#💡-技巧和窍门)
+    - [创建别名](#创建别名)
+    - [自动更新](#自动更新)
+    - [与其他工具集成](#与其他工具集成)
+    - [完成时通知](#完成时通知)
+  - [❓ 常见问题](#常见问题)
+  - [📖 文档](#📖-文档)
+  - [🤝 贡献](#🤝-贡献)
+  - [📜 许可证](#📜-许可证)
+  - [🔗 链接](#🔗-链接)
+  <!--toc:end-->
+
 一个用 Rust 编写的现代化、高效的开发者工具，通过一条命令统一更新开发环境中的工具和包管理器。告别多条更新命令，让 `devtool` 帮你保持一切最新。
 
 [![Crates.io](https://img.shields.io/crates/v/devtool.svg)](https://crates.io/crates/devtool)
@@ -65,17 +95,17 @@ devtool
 
 使用以下选项自定义 `devtool` 的行为：
 
-| 选项          | 简写  | 描述                                                    |
-| ------------- | ----- | ------------------------------------------------------- |
-| `--dry-run`   | `-n`  | 显示将要执行的步骤但不实际运行                          |
-| `--verbose`   | `-v`  | 在执行过程中打印详细输出                                |
-| `--version`   | `-V`  | 显示版本信息                                            |
-| `--keep-logs` |       | 保留每个步骤的日志文件，默认存储在 `~/.cache/devtool/` |
-| `--no-banner` |       | 不显示启动横幅                                          |
-| `--compact`   |       | 在非交互式环境中使用更紧凑的输出格式                    |
-| `--parallel`  |       | （未实现）并行执行更新步骤                              |
-| `--no-color`  |       | 禁用彩色输出                                            |
-| `--help`      | `-h`  | 显示帮助信息                                            |
+| 选项          | 简写 | 描述                                                   |
+| ------------- | ---- | ------------------------------------------------------ |
+| `--dry-run`   | `-n` | 显示将要执行的步骤但不实际运行                         |
+| `--verbose`   | `-v` | 在执行过程中打印详细输出                               |
+| `--version`   | `-V` | 显示版本信息                                           |
+| `--keep-logs` |      | 保留每个步骤的日志文件，默认存储在 `~/.cache/devtool/` |
+| `--no-banner` |      | 不显示启动横幅                                         |
+| `--compact`   |      | 在非交互式环境中使用更紧凑的输出格式                   |
+| `--parallel`  |      | （未实现）并行执行更新步骤                             |
+| `--no-color`  |      | 禁用彩色输出                                           |
+| `--help`      | `-h` | 显示帮助信息                                           |
 
 ### 示例
 
@@ -242,12 +272,12 @@ crontab -e
 ```makefile
 .PHONY: update-tools
 update-tools:
-	devtool
+ devtool
 
 .PHONY: dev-setup
 dev-setup: update-tools
-	npm install
-	bundle install
+ npm install
+ bundle install
 ```
 
 **在脚本中：**
@@ -319,6 +349,7 @@ devtool && notify-send "devtool" "更新完成"
 欢迎贡献！请随时在 GitHub 仓库提交 issue 和拉取请求。
 
 查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详细指南：
+
 - 报告错误
 - 建议功能
 - 提交拉取请求
@@ -336,3 +367,4 @@ devtool && notify-send "devtool" "更新完成"
 - [文档](https://docs.rs/devtool)
 - [报告问题](https://github.com/jenkinpan/devtool-rs/issues)
 - [讨论区](https://github.com/jenkinpan/devtool-rs/discussions)
+
