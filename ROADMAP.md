@@ -5,6 +5,7 @@ This document outlines the planned features and improvements for devtool-rs. The
 ## Current Version: 0.4.0
 
 ### Completed ✅
+
 - Modular architecture with clear separation of concerns
 - Support for Homebrew, Rustup, and Mise
 - Multi-language support (English, Chinese)
@@ -21,9 +22,11 @@ This document outlines the planned features and improvements for devtool-rs. The
 **Target Release**: Q2 2024
 
 ### Goals
+
 Enable parallel execution of independent update tasks to significantly reduce total update time.
 
 ### Features
+
 - [ ] **Parallel Execution Framework**
   - Add `--parallel` flag to enable concurrent updates
   - Implement dependency graph for tool update ordering
@@ -46,6 +49,7 @@ Enable parallel execution of independent update tasks to significantly reduce to
   - Tool-specific settings
 
 ### Technical Debt
+
 - [ ] Replace synchronous I/O with async I/O where beneficial
 - [ ] Add performance benchmarks for parallel vs. sequential
 - [ ] Optimize memory usage for log storage
@@ -57,9 +61,11 @@ Enable parallel execution of independent update tasks to significantly reduce to
 **Target Release**: Q3 2024
 
 ### Goals
+
 Expand support to more package managers and development tools.
 
 ### New Package Managers
+
 - [ ] **npm/pnpm/yarn** - Node.js package managers
   - Global package updates
   - Outdated package detection
@@ -79,6 +85,7 @@ Expand support to more package managers and development tools.
   - Runtime version management
 
 ### Plugin System
+
 - [ ] Plugin architecture for custom tool support
 - [ ] Community plugin repository
 - [ ] Plugin discovery and installation
@@ -90,9 +97,11 @@ Expand support to more package managers and development tools.
 **Target Release**: Q4 2024
 
 ### Goals
+
 Make devtool smarter about when and what to update.
 
 ### Features
+
 - [ ] **Update Scheduling**
   - Automatic periodic updates (cron-like)
   - Smart timing (avoid updates during work hours)
@@ -120,9 +129,11 @@ Make devtool smarter about when and what to update.
 **Target Release**: Q1 2025
 
 ### Goals
+
 Production-ready stable release with comprehensive features and rock-solid reliability.
 
 ### Requirements for 1.0
+
 - [ ] **Stability**
   - 95%+ test coverage
   - Zero critical bugs
@@ -158,6 +169,7 @@ Production-ready stable release with comprehensive features and rock-solid relia
 These are ideas being considered but not yet scheduled:
 
 ### Advanced Features
+
 - **Machine Learning Integration**
   - Predict optimal update times based on usage patterns
   - Detect anomalies in update behavior
@@ -190,12 +202,14 @@ These are ideas being considered but not yet scheduled:
   - Breaking change warnings
 
 ### Tool Integrations
+
 - IDE plugins (VS Code, IntelliJ)
 - Shell completions (zsh, bash, fish)
 - tmux/screen integration
 - Alfred/Raycast workflows
 
 ### Quality of Life
+
 - Update profiles (minimal, standard, full)
 - Bandwidth-aware updates
 - Resume interrupted updates
@@ -215,6 +229,7 @@ We welcome community input on our roadmap! Here's how you can contribute:
 ### Priority Guidelines
 
 Features are prioritized based on:
+
 - **Impact**: How many users will benefit?
 - **Effort**: How complex is the implementation?
 - **Alignment**: Does it fit the project's vision?
@@ -224,11 +239,11 @@ Features are prioritized based on:
 
 ## Version History
 
-| Version | Release Date | Highlights |
-|---------|-------------|------------|
-| 0.4.0   | 2024-01-XX  | Modular refactoring, CI/CD, comprehensive tests |
-| 0.3.5   | 2023-XX-XX  | Multi-language support, progress status |
-| 0.3.0   | 2023-XX-XX  | Initial stable release |
+| Version | Release Date | Highlights                                      |
+| ------- | ------------ | ----------------------------------------------- |
+| 0.4.0   | 2024-01-XX   | Modular refactoring, CI/CD, comprehensive tests |
+| 0.3.5   | 2023-XX-XX   | Multi-language support, progress status         |
+| 0.3.0   | 2023-XX-XX   | Initial stable release                          |
 
 ---
 
@@ -244,3 +259,4 @@ Features are prioritized based on:
 **Note**: This roadmap is a living document and will be updated as priorities shift and new opportunities arise. Release dates are estimates and subject to change.
 
 Last Updated: January 2024
+
