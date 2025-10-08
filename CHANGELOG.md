@@ -7,7 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.1] - 2024-01-XX
+## [0.5.6] - 2025-10-08
+
+### Added
+- **Shell completion support**: Added comprehensive shell completion generation for multiple shells
+  - Support for bash, zsh, fish, powershell, elvish, and nushell
+  - New `devtool completion <shell>` command to generate completion scripts
+  - Chinese descriptions in completion scripts for better user experience
+  - Complete documentation for installation and usage of completion scripts
+- **Nushell support**: Added dedicated support for nushell completion generation
+  - Uses `clap_complete_nushell` crate for modern nushell completion format
+  - Generates `.nu` files compatible with nushell's module system
+  - Includes intelligent completion suggestions and parameter descriptions
+
+### Changed
+- **CLI structure**: Refactored CLI to use subcommands for better organization
+  - `devtool update` - Main update functionality (default behavior)
+  - `devtool completion <shell>` - Generate shell completion scripts
+  - `devtool progress-status` - Check update progress
+- **Dependencies**: Updated and added new dependencies
+  - Added `clap_complete = "4.5"` for shell completion generation
+  - Added `clap_complete_nushell = "4.5"` for nushell support
+  - Updated `criterion = "0.7"` for benchmarking
+
+### Fixed
+- **Compiler warnings**: Resolved all unused variable warnings
+  - Marked `parallel` and `compact` parameters as intentionally unused with underscore prefix
+  - Clean compilation with no warnings
+
+### Documentation
+- **Completion guide**: Added comprehensive `COMPLETIONS.md` documentation
+  - Installation instructions for all supported shells
+  - Usage examples and configuration guides
+  - Nushell-specific setup instructions
+  - Chinese language support in completion scripts
+
+## [0.4.1] - 2025-10-04
 
 ### Added
 - Chinese README (`README_zh.md`) for better support of Chinese-speaking users
@@ -35,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced release automation with multi-platform builds
 - Added criterion as dev-dependency for performance benchmarking
 
-## [0.4.0] - 2024-01-XX
+## [0.4.0] - 2025-10-04
 
 ### Changed
 - **Major refactoring**: Restructured the entire codebase into modular components for better maintainability
@@ -83,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced code documentation
 - Prepared foundation for future parallel execution support
 
-## [0.3.5] - Previous Release
+## [0.3.5] - 2025-10-04
 
 ### Features
 - Support for updating Homebrew packages
@@ -108,7 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--help` - Show help information
 - `--version` - Show version information
 
-## [0.3.0] - Initial Stable Release
+## [0.3.0] - 2025-10-03
 
 ### Added
 - Initial release of devtool-rs
@@ -119,6 +154,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## Upgrade Notes
+
+### 0.4.1 → 0.5.6
+
+This is a feature release that adds shell completion support while maintaining full backward compatibility. All existing functionality works exactly as before.
+
+**New Features:**
+- Shell completion generation for 6 different shells (bash, zsh, fish, powershell, elvish, nushell)
+- New `devtool completion <shell>` command
+- Comprehensive completion documentation
+
+**Breaking Changes:**
+- None. All existing commands and options work exactly as before.
+
+**Migration Guide:**
+- No action required for existing users
+- Optional: Install shell completion scripts for better user experience
+- See `COMPLETIONS.md` for installation instructions
 
 ### 0.4.0 → 0.4.1
 
@@ -145,7 +197,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.5.6...HEAD
+[0.5.6]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.1...v0.5.6
 [0.4.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.3.5...v0.4.0
 [0.3.5]: https://github.com/jenkinpan/devtool-rs/compare/v0.3.0...v0.3.5

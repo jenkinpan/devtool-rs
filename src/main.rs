@@ -2,7 +2,9 @@
 // 统一管理 Homebrew、Rustup、Mise 等开发工具的更新
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{Parser, CommandFactory};
+use clap_complete::Shell;
+use clap_complete_nushell::Nushell;
 use std::fs;
 use tempfile::tempdir;
 use which::which;
@@ -16,7 +18,7 @@ mod ui;
 mod utils;
 
 // 导入需要使用的项
-use cli::Args;
+use cli::{Args, Commands, ShellType};
 use commands::{brew_cleanup, brew_update, brew_upgrade, mise_up, rustup_update, Step, StepFn};
 use i18n::LocalizedStrings;
 use runner::ShellRunner;
@@ -27,31 +29,60 @@ use utils::get_cache_dir;
 fn main() -> Result<()> {
     let args = Args::parse();
 
+    // 处理补全生成命令
+    if let Some(Commands::Completion { shell }) = &args.command {
+        let mut cmd = Args::command();
+        match shell {
+            ShellType::Bash => clap_complete::generate(Shell::Bash, &mut cmd, "devtool", &mut std::io::stdout()),
+            ShellType::Zsh => clap_complete::generate(Shell::Zsh, &mut cmd, "devtool", &mut std::io::stdout()),
+            ShellType::Fish => clap_complete::generate(Shell::Fish, &mut cmd, "devtool", &mut std::io::stdout()),
+            ShellType::Powershell => clap_complete::generate(Shell::PowerShell, &mut cmd, "devtool", &mut std::io::stdout()),
+            ShellType::Elvish => clap_complete::generate(Shell::Elvish, &mut cmd, "devtool", &mut std::io::stdout()),
+            ShellType::Nushell => clap_complete::generate(Nushell, &mut cmd, "devtool", &mut std::io::stdout()),
+        }
+        return Ok(());
+    }
+
+    // 处理 progress-status 子命令
+    if let Some(Commands::ProgressStatus) = &args.command {
+        return progress_status_cmd();
+    }
+
+    // 获取 update 命令的参数，如果没有指定命令则使用默认值
+    let (dry_run, verbose, no_color, keep_logs, _parallel, no_banner, _compact) = match &args.command {
+        Some(Commands::Update {
+            dry_run,
+            verbose,
+            no_color,
+            keep_logs,
+            parallel,
+            no_banner,
+            compact,
+        }) => (*dry_run, *verbose, *no_color, *keep_logs, *parallel, *no_banner, *compact),
+        None => (false, false, false, false, false, false, false), // 默认值
+        _ => return Ok(()),
+    };
+
     // 检测系统语言并初始化本地化
     let system_lang = i18n::detect_system_language();
-    if args.verbose {
+    if verbose {
         println!("Debug: Detected language: {}", system_lang);
     }
     let localized = LocalizedStrings::new(&system_lang);
 
     // 初始化颜色支持
-    if args.no_color {
+    if no_color {
         colored::control::set_override(false);
     } else if ui::colors::supports_color() {
         colored::control::set_override(true);
-    }
-
-    // 处理 progress-status 子命令
-    if args.command == "progress-status" {
-        return progress_status_cmd();
     }
 
     // 处理版本信息输出
     // 记录开始时间
     let start_time = chrono::Local::now();
 
-    if !args.no_banner {
-        if ui::colors::supports_color() && !args.no_color {
+    if !no_banner {
+        if ui::colors::supports_color() && !no_color {
             print_banner(&format!(
                 "{}{}",
                 localized.banner,
@@ -119,7 +150,7 @@ fn main() -> Result<()> {
             )
         };
 
-        if ui::colors::supports_color() && !args.no_color {
+        if ui::colors::supports_color() && !no_color {
             print_warning(&warning_msg);
         } else {
             println!("{}", warning_msg);
@@ -139,7 +170,7 @@ fn main() -> Result<()> {
         "📋 {}",
         localized.steps_count.replace("{}", &total.to_string())
     );
-    if ui::colors::supports_color() && !args.no_color {
+    if ui::colors::supports_color() && !no_color {
         print_info(&steps_msg);
     } else {
         println!("{}", steps_msg);
@@ -168,14 +199,14 @@ fn main() -> Result<()> {
     let runner = ShellRunner;
 
     for (idx, step) in steps.iter().enumerate() {
-        let (state, _rc, logfile) = if args.dry_run {
+        let (state, _rc, logfile) = if dry_run {
             (
                 "unchanged".to_string(),
                 0,
                 run_tmp.join(format!("step.{}.log", idx)),
             )
         } else {
-            match (step.fn_name)(&runner, &run_tmp, args.verbose, &mut pb_opt) {
+            match (step.fn_name)(&runner, &run_tmp, verbose, &mut pb_opt) {
                 Ok(t) => t,
                 Err(e) => {
                     eprintln!("step failed: {}", e);
@@ -215,7 +246,7 @@ fn main() -> Result<()> {
         }
 
         // 可选保留日志
-        if args.keep_logs {
+        if keep_logs {
             let devcache = get_cache_dir();
             fs::create_dir_all(&devcache)?;
             let dest = devcache.join(
@@ -278,7 +309,7 @@ fn main() -> Result<()> {
         pb.update_to(total, &localized.progress_complete);
     }
     println!(); // 换行
-    if !args.dry_run {
+    if !dry_run {
         progress_finish();
     }
 
@@ -308,7 +339,7 @@ fn main() -> Result<()> {
         duration_str
     );
 
-    if ui::colors::supports_color() && !args.no_color {
+    if ui::colors::supports_color() && !no_color {
         print_success(&update_complete_msg);
         if !updated.is_empty() {
             let updated_msg = if system_lang == "zh" {
@@ -353,7 +384,7 @@ fn main() -> Result<()> {
     // 打印详细更新信息
     if let Some(vals) = short_updates.get("Homebrew：升级软件包") {
         if !vals.is_empty() {
-            if ui::colors::supports_color() && !args.no_color {
+            if ui::colors::supports_color() && !no_color {
                 print_info("📦 Homebrew 升级详情：");
             } else {
                 println!("📦 Homebrew 升级详情：");
@@ -366,7 +397,7 @@ fn main() -> Result<()> {
 
     if let Some(vals) = short_updates.get("Rust：更新 stable 工具链") {
         if !vals.is_empty() {
-            if ui::colors::supports_color() && !args.no_color {
+            if ui::colors::supports_color() && !no_color {
                 print_info("🦀 Rust 升级详情：");
             } else {
                 println!("🦀 Rust 升级详情：");
@@ -379,7 +410,7 @@ fn main() -> Result<()> {
 
     if let Some(vals) = short_updates.get("Mise：更新托管工具") {
         if !vals.is_empty() {
-            if ui::colors::supports_color() && !args.no_color {
+            if ui::colors::supports_color() && !no_color {
                 print_info("🔧 Mise 升级详情：");
             } else {
                 println!("🔧 Mise 升级详情：");
@@ -391,7 +422,7 @@ fn main() -> Result<()> {
     }
 
     if !fail.is_empty() {
-        if ui::colors::supports_color() && !args.no_color {
+        if ui::colors::supports_color() && !no_color {
             print_error(&format!("❌ 失败：{}", fail.join(", ")));
         } else {
             println!("❌ 失败：{}", fail.join(", "));

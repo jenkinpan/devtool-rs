@@ -1,41 +1,71 @@
-use clap::Parser;
+use clap::{Parser, Subcommand, ValueEnum};
+
+/// 支持的 Shell 类型
+#[derive(Clone, Debug, PartialEq, ValueEnum)]
+pub enum ShellType {
+    /// Bash shell
+    Bash,
+    /// Zsh shell
+    Zsh,
+    /// Fish shell
+    Fish,
+    /// PowerShell
+    Powershell,
+    /// Elvish shell
+    Elvish,
+    /// Nushell
+    Nushell,
+}
 
 /// devtool - 开发工具统一更新管理器
 #[derive(Parser, Debug)]
 #[command(name = "devtool")]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// 要执行的命令（默认为 update）
-    #[arg(default_value_t = String::from("update"))]
-    pub command: String,
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+}
 
-    /// 模拟执行，不实际运行命令
-    #[arg(short = 'n', long = "dry-run")]
-    pub dry_run: bool,
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    /// 更新开发工具（默认命令）
+    Update {
+        /// 模拟执行，不实际运行命令
+        #[arg(short = 'n', long = "dry-run")]
+        dry_run: bool,
 
-    /// 详细输出模式
-    #[arg(short = 'v', long = "verbose")]
-    pub verbose: bool,
+        /// 详细输出模式
+        #[arg(short = 'v', long = "verbose")]
+        verbose: bool,
 
-    /// 禁用彩色输出
-    #[arg(long = "no-color")]
-    pub no_color: bool,
+        /// 禁用彩色输出
+        #[arg(long = "no-color")]
+        no_color: bool,
 
-    /// 保留日志文件到 ~/.cache/devtool/
-    #[arg(long = "keep-logs")]
-    pub keep_logs: bool,
+        /// 保留日志文件到 ~/.cache/devtool/
+        #[arg(long = "keep-logs")]
+        keep_logs: bool,
 
-    /// 并行执行更新步骤（尚未实现）
-    #[arg(long = "parallel")]
-    pub parallel: bool,
+        /// 并行执行更新步骤（尚未实现）
+        #[arg(long = "parallel")]
+        parallel: bool,
 
-    /// 不显示启动横幅
-    #[arg(long = "no-banner")]
-    pub no_banner: bool,
+        /// 不显示启动横幅
+        #[arg(long = "no-banner")]
+        no_banner: bool,
 
-    /// 使用紧凑输出格式（适用于非交互环境）
-    #[arg(long = "compact")]
-    pub compact: bool,
+        /// 使用紧凑输出格式（适用于非交互环境）
+        #[arg(long = "compact")]
+        compact: bool,
+    },
+    /// 生成 shell 补全脚本
+    Completion {
+        /// Shell 类型
+        #[arg(value_enum)]
+        shell: ShellType,
+    },
+    /// 显示进度状态
+    ProgressStatus,
 }
 
 #[cfg(test)]
@@ -45,27 +75,52 @@ mod tests {
     #[test]
     fn test_args_defaults() {
         let args = Args::parse_from(["devtool"]);
-        assert_eq!(args.command, "update");
-        assert!(!args.dry_run);
-        assert!(!args.verbose);
-        assert!(!args.no_color);
+        assert!(args.command.is_none());
     }
 
     #[test]
-    fn test_args_dry_run() {
-        let args = Args::parse_from(["devtool", "--dry-run"]);
-        assert!(args.dry_run);
+    fn test_args_update() {
+        let args = Args::parse_from(["devtool", "update"]);
+        match args.command {
+            Some(Commands::Update { dry_run, verbose, no_color, .. }) => {
+                assert!(!dry_run);
+                assert!(!verbose);
+                assert!(!no_color);
+            }
+            _ => panic!("Expected Update command"),
+        }
     }
 
     #[test]
-    fn test_args_verbose() {
-        let args = Args::parse_from(["devtool", "-v"]);
-        assert!(args.verbose);
+    fn test_args_update_dry_run() {
+        let args = Args::parse_from(["devtool", "update", "--dry-run"]);
+        match args.command {
+            Some(Commands::Update { dry_run, .. }) => {
+                assert!(dry_run);
+            }
+            _ => panic!("Expected Update command"),
+        }
     }
 
     #[test]
-    fn test_args_no_color() {
-        let args = Args::parse_from(["devtool", "--no-color"]);
-        assert!(args.no_color);
+    fn test_args_completion() {
+        let args = Args::parse_from(["devtool", "completion", "bash"]);
+        match args.command {
+            Some(Commands::Completion { shell }) => {
+                assert_eq!(shell, ShellType::Bash);
+            }
+            _ => panic!("Expected Completion command"),
+        }
+    }
+
+    #[test]
+    fn test_args_completion_nushell() {
+        let args = Args::parse_from(["devtool", "completion", "nushell"]);
+        match args.command {
+            Some(Commands::Completion { shell }) => {
+                assert_eq!(shell, ShellType::Nushell);
+            }
+            _ => panic!("Expected Completion command with nushell"),
+        }
     }
 }
