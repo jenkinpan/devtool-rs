@@ -2,7 +2,7 @@
 // 统一管理 Homebrew、Rustup、Mise 等开发工具的更新
 
 use anyhow::Result;
-use clap::{Parser, CommandFactory};
+use clap::{CommandFactory, Parser};
 use clap_complete::Shell;
 use clap_complete_nushell::Nushell;
 use std::fs;
@@ -33,12 +33,27 @@ fn main() -> Result<()> {
     if let Some(Commands::Completion { shell }) = &args.command {
         let mut cmd = Args::command();
         match shell {
-            ShellType::Bash => clap_complete::generate(Shell::Bash, &mut cmd, "devtool", &mut std::io::stdout()),
-            ShellType::Zsh => clap_complete::generate(Shell::Zsh, &mut cmd, "devtool", &mut std::io::stdout()),
-            ShellType::Fish => clap_complete::generate(Shell::Fish, &mut cmd, "devtool", &mut std::io::stdout()),
-            ShellType::Powershell => clap_complete::generate(Shell::PowerShell, &mut cmd, "devtool", &mut std::io::stdout()),
-            ShellType::Elvish => clap_complete::generate(Shell::Elvish, &mut cmd, "devtool", &mut std::io::stdout()),
-            ShellType::Nushell => clap_complete::generate(Nushell, &mut cmd, "devtool", &mut std::io::stdout()),
+            ShellType::Bash => {
+                clap_complete::generate(Shell::Bash, &mut cmd, "devtool", &mut std::io::stdout())
+            }
+            ShellType::Zsh => {
+                clap_complete::generate(Shell::Zsh, &mut cmd, "devtool", &mut std::io::stdout())
+            }
+            ShellType::Fish => {
+                clap_complete::generate(Shell::Fish, &mut cmd, "devtool", &mut std::io::stdout())
+            }
+            ShellType::Powershell => clap_complete::generate(
+                Shell::PowerShell,
+                &mut cmd,
+                "devtool",
+                &mut std::io::stdout(),
+            ),
+            ShellType::Elvish => {
+                clap_complete::generate(Shell::Elvish, &mut cmd, "devtool", &mut std::io::stdout())
+            }
+            ShellType::Nushell => {
+                clap_complete::generate(Nushell, &mut cmd, "devtool", &mut std::io::stdout())
+            }
         }
         return Ok(());
     }
@@ -49,19 +64,22 @@ fn main() -> Result<()> {
     }
 
     // 获取 update 命令的参数，如果没有指定命令则使用默认值
-    let (dry_run, verbose, no_color, keep_logs, _parallel, no_banner, _compact) = match &args.command {
-        Some(Commands::Update {
-            dry_run,
-            verbose,
-            no_color,
-            keep_logs,
-            parallel,
-            no_banner,
-            compact,
-        }) => (*dry_run, *verbose, *no_color, *keep_logs, *parallel, *no_banner, *compact),
-        None => (false, false, false, false, false, false, false), // 默认值
-        _ => return Ok(()),
-    };
+    let (dry_run, verbose, no_color, keep_logs, _parallel, no_banner, _compact) =
+        match &args.command {
+            Some(Commands::Update {
+                dry_run,
+                verbose,
+                no_color,
+                keep_logs,
+                parallel,
+                no_banner,
+                compact,
+            }) => (
+                *dry_run, *verbose, *no_color, *keep_logs, *parallel, *no_banner, *compact,
+            ),
+            None => (false, false, false, false, false, false, false), // 默认值
+            _ => return Ok(()),
+        };
 
     // 检测系统语言并初始化本地化
     let system_lang = i18n::detect_system_language();

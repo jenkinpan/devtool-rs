@@ -3,7 +3,7 @@
 //! These benchmarks help identify performance bottlenecks and measure
 //! the impact of optimizations, especially for parallel execution.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use std::process::Command;
 use std::time::Duration;
 
@@ -19,7 +19,7 @@ fn bench_sequential_commands(c: &mut Criterion) {
                     .arg(format!("test {}", i))
                     .output()
                     .expect("Failed to execute command");
-                black_box(output);
+                std::hint::black_box(output);
             }
         });
     });
@@ -30,7 +30,7 @@ fn bench_sequential_commands(c: &mut Criterion) {
                 let output = Command::new("true")
                     .output()
                     .expect("Failed to execute command");
-                black_box(output);
+                std::hint::black_box(output);
             }
         });
     });
@@ -51,7 +51,7 @@ fn bench_command_output_parsing(c: &mut Criterion) {
 
             let stdout = String::from_utf8_lossy(&output.stdout);
             let version = stdout.split_whitespace().nth(1).unwrap_or("unknown");
-            black_box(version);
+            std::hint::black_box(version);
         });
     });
 
@@ -64,7 +64,7 @@ fn bench_command_output_parsing(c: &mut Criterion) {
 
             let stdout = String::from_utf8_lossy(&output.stdout);
             let lines: Vec<&str> = stdout.lines().collect();
-            black_box(lines);
+            std::hint::black_box(lines);
         });
     });
 
@@ -81,7 +81,7 @@ fn bench_command_patterns(c: &mut Criterion) {
                 .arg("test")
                 .output()
                 .expect("Failed to execute command");
-            black_box(output);
+            std::hint::black_box(output);
         });
     });
 
@@ -92,7 +92,7 @@ fn bench_command_patterns(c: &mut Criterion) {
                 .arg("echo test")
                 .output()
                 .expect("Failed to execute command");
-            black_box(output);
+            std::hint::black_box(output);
         });
     });
 
@@ -118,7 +118,7 @@ fn bench_io_operations(c: &mut Criterion) {
 
             // Read
             let content = fs::read_to_string(&temp_file).unwrap();
-            black_box(content);
+            std::hint::black_box(content);
 
             // Cleanup
             let _ = fs::remove_file(&temp_file);
@@ -141,7 +141,7 @@ fn bench_string_operations(c: &mut Criterion) {
     group.bench_function("split_lines", |b| {
         b.iter(|| {
             let lines: Vec<&str> = sample_output.lines().collect();
-            black_box(lines);
+            std::hint::black_box(lines);
         });
     });
 
@@ -151,7 +151,7 @@ fn bench_string_operations(c: &mut Criterion) {
                 .lines()
                 .filter(|line| line.starts_with("==>"))
                 .collect();
-            black_box(filtered);
+            std::hint::black_box(filtered);
         });
     });
 
@@ -161,7 +161,7 @@ fn bench_string_operations(c: &mut Criterion) {
 
         b.iter(|| {
             let matches: Vec<_> = re.find_iter(sample_output).collect();
-            black_box(matches);
+            std::hint::black_box(matches);
         });
     });
 
