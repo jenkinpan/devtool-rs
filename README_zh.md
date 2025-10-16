@@ -34,7 +34,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/devtool.svg)](https://crates.io/crates/devtool)
 [![CI](https://github.com/jenkinpan/devtool-rs/workflows/CI/badge.svg)](https://github.com/jenkinpan/devtool-rs/actions/workflows/ci.yml)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 [![codecov](https://codecov.io/gh/jenkinpan/devtool-rs/branch/main/graph/badge.svg)](https://codecov.io/gh/jenkinpan/devtool-rs)
 
@@ -358,7 +358,7 @@ devtool && notify-send "devtool" "更新完成"
 
 ## 📜 许可证
 
-本项目采用 MIT 许可证和 Apache License 2.0 双重许可。
+本项目采用 Apache License 2.0 许可证。
 
 ## 🔗 链接
 

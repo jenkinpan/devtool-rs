@@ -7,7 +7,7 @@ documentation = "https://docs.rs/devtool"
 readme = "README.md"
 homepage = "https://github.com/jenkinpan/devtool-rs"
 repository = "https://github.com/jenkinpan/devtool-rs"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 keywords = ["cli", "homebrew", "mise", "rust", "rustup"]
 categories = ["command-line-utilities", "development-tools"]
 
