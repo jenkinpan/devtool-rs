@@ -26,6 +26,7 @@ pub enum ShellType {
 #[command(
     long_about = "devtool is a modern, efficient developer tool written in Rust that unifies the update process for your development environment tools and package managers with a single command."
 )]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 pub struct Args {
     #[command(subcommand)]
     pub command: Option<Commands>,

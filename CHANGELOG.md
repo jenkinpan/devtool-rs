@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2025-01-27
+
+### Added
+- **Version Information**: Added `-V` and `--version` parameters to display version information
+  - Users can now check the current version with `devtool -V` or `devtool --version`
+  - Version information is automatically retrieved from Cargo.toml
+  - Follows standard CLI conventions for version display
+
 ## [0.7.1] - 2025-10-16
 
 ### Fixed
