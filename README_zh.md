@@ -313,9 +313,6 @@ devtool && notify-send "devtool" "更新完成"
 **问：devtool 支持 Windows 吗？**  
 答：部分支持。Rustup 和 Mise 可以工作，但 Homebrew 在 Windows 上不可用。我们计划在未来添加 winget 支持。
 
-**问：我可以自定义更新哪些工具吗？**  
-答：目前，devtool 会更新所有检测到的工具。配置文件支持计划在 v0.5.0 中推出。
-
 **问：运行 devtool 安全吗？**  
 答：是的！devtool 只调用每个工具的标准更新命令。使用 `--dry-run` 可以在运行前查看将要执行的内容。
 

@@ -276,9 +276,6 @@ devtool && notify-send "devtool" "Updates completed"
 **Q: Does devtool work on Windows?**  
 A: Partial support. Rustup and Mise work, but Homebrew is not available on Windows. We plan to add winget support in the future.
 
-**Q: Can I customize which tools to update?**  
-A: Currently, devtool updates all detected tools. Configuration file support is planned for v0.5.0.
-
 **Q: Is it safe to run devtool?**  
 A: Yes! devtool only calls the standard update commands for each tool. Use `--dry-run` to see exactly what will be executed before running.
 
