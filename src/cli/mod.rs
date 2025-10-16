@@ -46,9 +46,13 @@ pub enum Commands {
         #[arg(long = "keep-logs")]
         keep_logs: bool,
 
-        /// 并行执行更新步骤（尚未实现）
+        /// 并行执行更新步骤
         #[arg(long = "parallel")]
         parallel: bool,
+
+        /// 并行任务数量限制
+        #[arg(long = "jobs", default_value_t = 4)]
+        jobs: usize,
 
         /// 不显示启动横幅
         #[arg(long = "no-banner")]
@@ -82,7 +86,12 @@ mod tests {
     fn test_args_update() {
         let args = Args::parse_from(["devtool", "update"]);
         match args.command {
-            Some(Commands::Update { dry_run, verbose, no_color, .. }) => {
+            Some(Commands::Update {
+                dry_run,
+                verbose,
+                no_color,
+                ..
+            }) => {
                 assert!(!dry_run);
                 assert!(!verbose);
                 assert!(!no_color);

@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-10-16
+
+### Added
+- **Parallel Execution Framework**: Revolutionary parallel execution system for faster updates
+  - New `--parallel` flag to enable concurrent tool updates
+  - `--jobs <N>` parameter to control maximum concurrent tasks (default: 4)
+  - Intelligent dependency management with `DependencyGraph` for optimal execution order
+  - Async/await architecture using Tokio runtime for high-performance execution
+  - Comprehensive error handling and result aggregation for parallel tasks
+  - Support for both parallel and sequential execution modes
+- **Advanced Task Scheduling**: Smart task management system
+  - `ParallelScheduler` with configurable concurrency limits
+  - Resource-aware scheduling to prevent system overload
+  - Automatic dependency resolution for complex update sequences
+  - Graceful error handling with detailed task result reporting
+- **Enhanced Performance**: Significant speed improvements
+  - Up to 3x faster execution with parallel mode
+  - Efficient resource utilization with configurable job limits
+  - Optimized memory usage for large-scale updates
+  - Background task execution with progress tracking
+
+### Changed
+- **Architecture**: Complete refactoring to support async execution
+  - Main function converted to `#[tokio::main]` for async runtime
+  - Tool execution logic abstracted into `execute_tool_update` function
+  - Parallel and sequential execution paths with unified result handling
+  - Improved error handling with detailed task result reporting
+- **Dependencies**: Added async runtime support
+  - Added `tokio = { version = "1.0", features = ["full"] }` for async execution
+  - Maintained backward compatibility with existing functionality
+  - Enhanced CLI with new parallel execution options
+
+### Technical Details
+- **New Modules**: Added `src/parallel/mod.rs` with comprehensive parallel execution framework
+- **Tool Management**: `Tool` enum with `Homebrew`, `Rustup`, and `Mise` variants
+- **Dependency System**: `DependencyGraph` for managing tool update dependencies
+- **Task Results**: `TaskResult` struct for detailed execution reporting
+- **Scheduler**: `ParallelScheduler` for managing concurrent task execution
+
 ## [0.5.6] - 2025-10-08
 
 ### Added

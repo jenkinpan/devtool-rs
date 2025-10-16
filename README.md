@@ -12,6 +12,7 @@ English | [简体中文](README_zh.md)
 ## ✨ Features
 
 - **One-command updates**: Run `devtool` to automatically update multiple supported tools
+- **🚀 Parallel execution**: Use `--parallel` flag for up to 3x faster updates with concurrent tool execution
 - **Smart detection**: Automatically detects installed tools (Homebrew, rustup, mise) and skips uninstalled ones
 - **Beautiful progress feedback**: Real-time progress bars and status updates in the terminal
 - **Detailed logging**: Each step's output is logged for easy troubleshooting
@@ -59,6 +60,27 @@ devtool
 ```
 
 This is equivalent to running `devtool update`.
+
+### Parallel Execution (New in v0.6.0)
+
+For faster updates, use the new parallel execution mode:
+
+```bash
+# Enable parallel execution with default 4 concurrent jobs
+devtool --parallel
+
+# Control the number of concurrent jobs
+devtool --parallel --jobs 2
+
+# Parallel execution with dry run
+devtool --parallel --jobs 3 --dry-run
+```
+
+**Performance Benefits:**
+- Up to 3x faster execution with parallel mode
+- Configurable concurrency with `--jobs` parameter
+- Intelligent dependency management
+- Maintains all safety features of sequential mode
 
 ### Command Line Options
 

@@ -5,7 +5,6 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use clap_complete::Shell;
 use clap_complete_nushell::Nushell;
-use std::fs;
 use tempfile::tempdir;
 use which::which;
 
@@ -13,20 +12,105 @@ use which::which;
 mod cli;
 mod commands;
 mod i18n;
+mod parallel;
 mod runner;
 mod ui;
 mod utils;
 
 // 导入需要使用的项
 use cli::{Args, Commands, ShellType};
-use commands::{brew_cleanup, brew_update, brew_upgrade, mise_up, rustup_update, Step, StepFn};
+use commands::{brew_cleanup, brew_update, brew_upgrade, mise_up, rustup_update};
 use i18n::LocalizedStrings;
+use parallel::{ParallelScheduler, TaskResult, Tool};
 use runner::ShellRunner;
 use ui::colors::{print_banner, print_error, print_info, print_success, print_warning};
-use ui::progress::{progress_finish, progress_start, progress_status_cmd, progress_update, Bar};
-use utils::get_cache_dir;
+use ui::progress::{progress_finish, progress_start, progress_status_cmd, Bar};
 
-fn main() -> Result<()> {
+/// Execute tool updates in parallel
+async fn execute_parallel_updates(
+    tools: Vec<Tool>,
+    jobs: usize,
+    dry_run: bool,
+    verbose: bool,
+    keep_logs: bool,
+    _localized: &LocalizedStrings,
+) -> Result<Vec<TaskResult>> {
+    let scheduler = ParallelScheduler::new(jobs);
+
+    let update_fn = move |tool: Tool| {
+        let tool_clone = tool.clone();
+        tokio::spawn(
+            async move { execute_tool_update(tool_clone, dry_run, verbose, keep_logs).await },
+        )
+    };
+
+    scheduler.execute_parallel(tools, update_fn).await
+}
+
+/// Execute a single tool update
+async fn execute_tool_update(
+    tool: Tool,
+    _dry_run: bool,
+    verbose: bool,
+    _keep_logs: bool,
+) -> Result<TaskResult> {
+    let runner = ShellRunner;
+    let run_tmp = std::env::temp_dir();
+
+    let result = if _dry_run {
+        TaskResult {
+            tool: tool.clone(),
+            success: true,
+            output: format!("{} (dry run)", tool.display_name()),
+            error: None,
+        }
+    } else {
+        match tool {
+            Tool::Homebrew => {
+                // Execute homebrew update sequence
+                let update_result = brew_update(&runner, &run_tmp, verbose, &mut None)?;
+                let upgrade_result = brew_upgrade(&runner, &run_tmp, verbose, &mut None)?;
+                let cleanup_result = brew_cleanup(&runner, &run_tmp, verbose, &mut None)?;
+
+                // Combine results
+                let success = update_result.0 == "changed"
+                    || upgrade_result.0 == "changed"
+                    || cleanup_result.0 == "changed";
+                let output = format!("Homebrew update completed");
+
+                TaskResult {
+                    tool,
+                    success,
+                    output,
+                    error: None,
+                }
+            }
+            Tool::Rustup => {
+                let result = rustup_update(&runner, &run_tmp, verbose, &mut None)?;
+                TaskResult {
+                    tool,
+                    success: result.0 == "changed",
+                    output: "Rustup update completed".to_string(),
+                    error: None,
+                }
+            }
+            Tool::Mise => {
+                let result = mise_up(&runner, &run_tmp, verbose, &mut None)?;
+                TaskResult {
+                    tool,
+                    success: result.0 == "changed",
+                    output: "Mise update completed".to_string(),
+                    error: None,
+                }
+            }
+        }
+    };
+
+    Ok(result)
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
     let args = Args::parse();
 
     // 处理补全生成命令
@@ -64,7 +148,7 @@ fn main() -> Result<()> {
     }
 
     // 获取 update 命令的参数，如果没有指定命令则使用默认值
-    let (dry_run, verbose, no_color, keep_logs, _parallel, no_banner, _compact) =
+    let (dry_run, verbose, no_color, keep_logs, parallel, jobs, no_banner, _compact) =
         match &args.command {
             Some(Commands::Update {
                 dry_run,
@@ -72,12 +156,13 @@ fn main() -> Result<()> {
                 no_color,
                 keep_logs,
                 parallel,
+                jobs,
                 no_banner,
                 compact,
             }) => (
-                *dry_run, *verbose, *no_color, *keep_logs, *parallel, *no_banner, *compact,
+                *dry_run, *verbose, *no_color, *keep_logs, *parallel, *jobs, *no_banner, *compact,
             ),
-            None => (false, false, false, false, false, false, false), // 默认值
+            None => (false, false, false, false, false, 4, false, false), // 默认值
             _ => return Ok(()),
         };
 
@@ -115,49 +200,32 @@ fn main() -> Result<()> {
         }
     }
 
-    // 构建步骤列表
-    let mut steps: Vec<Step> = Vec::new();
+    // 构建可用工具列表
+    let mut available_tools: Vec<Tool> = Vec::new();
     let mut skipped: Vec<&str> = Vec::new();
 
-    // 检查并添加 Homebrew 相关步骤
+    // 检查并添加 Homebrew
     if which("brew").is_ok() {
-        steps.push(Step {
-            desc: localized.step_homebrew_update.clone(),
-            fn_name: brew_update as StepFn,
-        });
-        steps.push(Step {
-            desc: localized.step_homebrew_upgrade.clone(),
-            fn_name: brew_upgrade as StepFn,
-        });
-        steps.push(Step {
-            desc: localized.step_cleanup.clone(),
-            fn_name: brew_cleanup as StepFn,
-        });
+        available_tools.push(Tool::Homebrew);
     } else {
         skipped.push("Homebrew");
     }
 
-    // 检查并添加 Rustup 相关步骤
+    // 检查并添加 Rustup
     if which("rustup").is_ok() {
-        steps.push(Step {
-            desc: localized.step_rust_update.clone(),
-            fn_name: rustup_update as StepFn,
-        });
+        available_tools.push(Tool::Rustup);
     } else {
         skipped.push("Rust (rustup)");
     }
 
-    // 检查并添加 Mise 相关步骤
+    // 检查并添加 Mise
     if which("mise").is_ok() {
-        steps.push(Step {
-            desc: localized.step_mise_update.clone(),
-            fn_name: mise_up as StepFn,
-        });
+        available_tools.push(Tool::Mise);
     } else {
         skipped.push("Mise");
     }
 
-    let total = steps.len();
+    let total = available_tools.len();
     if total == 0 {
         let warning_msg = if system_lang == "zh" {
             format!("⚠️ 未检测到可执行步骤。跳过： {}", skipped.join(", "))
@@ -178,23 +246,23 @@ fn main() -> Result<()> {
 
     // 创建临时目录用于日志
     let tmp = tempdir()?;
-    let run_tmp = tmp.path().to_path_buf();
+    let _run_tmp = tmp.path().to_path_buf();
 
     // 创建进度条
     let mut pb_opt = Some(Bar::new(total, "devtool"));
 
-    // 打印步骤列表
-    let steps_msg = format!(
+    // 打印工具列表
+    let tools_msg = format!(
         "📋 {}",
         localized.steps_count.replace("{}", &total.to_string())
     );
     if ui::colors::supports_color() && !no_color {
-        print_info(&steps_msg);
+        print_info(&tools_msg);
     } else {
-        println!("{}", steps_msg);
+        println!("{}", tools_msg);
     }
-    for (i, s) in steps.iter().enumerate() {
-        println!("  {}) {}", i + 1, s.desc);
+    for (i, tool) in available_tools.iter().enumerate() {
+        println!("  {}) {}", i + 1, tool.display_name());
     }
 
     // 开始外部进度跟踪
@@ -205,120 +273,67 @@ fn main() -> Result<()> {
         pb.update_to(0, &localized.progress_preparing);
     }
 
-    // 执行步骤
-    let mut succ: Vec<&str> = Vec::new();
-    let mut fail: Vec<&str> = Vec::new();
-    let mut updated: Vec<&str> = Vec::new();
-    let mut unchanged: Vec<String> = Vec::new();
-    let mut actions: Vec<&str> = Vec::new();
-    let mut short_updates: std::collections::HashMap<String, Vec<String>> =
+    // 执行工具更新
+    let mut results: Vec<TaskResult> = Vec::new();
+    let short_updates: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
 
-    let runner = ShellRunner;
-
-    for (idx, step) in steps.iter().enumerate() {
-        let (state, _rc, logfile) = if dry_run {
-            (
-                "unchanged".to_string(),
-                0,
-                run_tmp.join(format!("step.{}.log", idx)),
-            )
-        } else {
-            match (step.fn_name)(&runner, &run_tmp, verbose, &mut pb_opt) {
-                Ok(t) => t,
-                Err(e) => {
-                    eprintln!("step failed: {}", e);
-                    (
-                        "failed".to_string(),
-                        1,
-                        run_tmp.join(format!("step.{}.log", idx)),
-                    )
+    if parallel {
+        // 并行执行
+        if verbose {
+            println!("🚀 并行执行模式 (最大并发数: {})", jobs);
+        }
+        results = execute_parallel_updates(
+            available_tools,
+            jobs,
+            dry_run,
+            verbose,
+            keep_logs,
+            &localized,
+        )
+        .await?;
+    } else {
+        // 顺序执行
+        for (_idx, tool) in available_tools.iter().enumerate() {
+            let result = if dry_run {
+                TaskResult {
+                    tool: tool.clone(),
+                    success: true,
+                    output: format!("{} (dry run)", tool.display_name()),
+                    error: None,
                 }
-            }
-        };
-
-        if state == "changed" {
-            // 根据步骤描述分类
-            if step.desc.contains("清理") || step.desc.starts_with("Action：") {
-                actions.push(&step.desc);
             } else {
-                updated.push(&step.desc);
-            }
-            succ.push(&step.desc);
-        } else if state == "unchanged" {
-            if step.desc.contains("清理") || step.desc.starts_with("Action：") {
-                actions.push(&step.desc);
+                match execute_tool_update(tool.clone(), dry_run, verbose, keep_logs).await {
+                    Ok(result) => result,
+                    Err(e) => TaskResult {
+                        tool: tool.clone(),
+                        success: false,
+                        output: format!("{} failed", tool.display_name()),
+                        error: Some(e.to_string()),
+                    },
+                }
+            };
+            results.push(result);
+        }
+    }
+
+    // 处理执行结果
+    let mut succ: Vec<String> = Vec::new();
+    let mut fail: Vec<String> = Vec::new();
+    let mut updated: Vec<String> = Vec::new();
+    let mut unchanged: Vec<String> = Vec::new();
+    let actions: Vec<String> = Vec::new();
+
+    for result in &results {
+        if result.success {
+            succ.push(result.tool.display_name().to_string());
+            if result.output.contains("completed") {
+                updated.push(result.tool.display_name().to_string());
             } else {
-                let mut name = step.desc.to_string();
-                name = name
-                    .replace("更新", "")
-                    .replace("升级", "")
-                    .replace("  ", " ")
-                    .trim()
-                    .to_string();
-                unchanged.push(name);
+                unchanged.push(result.tool.display_name().to_string());
             }
-            succ.push(&step.desc);
         } else {
-            fail.push(&step.desc);
-        }
-
-        // 可选保留日志
-        if keep_logs {
-            let devcache = get_cache_dir();
-            fs::create_dir_all(&devcache)?;
-            let dest = devcache.join(
-                logfile
-                    .file_name()
-                    .unwrap_or_else(|| std::ffi::OsStr::new("log")),
-            );
-            fs::copy(&logfile, &dest).ok();
-        } else {
-            fs::remove_file(&logfile).ok();
-        }
-
-        // 读取步骤输出的详情文件
-        let mise_short = run_tmp.join("mise_short_updates.txt");
-        if mise_short.exists() {
-            if let Ok(s) = fs::read_to_string(&mise_short) {
-                let details: Vec<String> = s.lines().map(|line| line.trim().to_string()).collect();
-                if !details.is_empty() {
-                    short_updates.insert(step.desc.to_string(), details);
-                }
-            }
-            let _ = fs::remove_file(&mise_short);
-        }
-
-        let brew_details = run_tmp.join("brew_upgrade_details.txt");
-        if brew_details.exists() {
-            if let Ok(s) = fs::read_to_string(&brew_details) {
-                let details: Vec<String> = s.lines().map(|line| line.trim().to_string()).collect();
-                if !details.is_empty() {
-                    short_updates.insert(step.desc.to_string(), details);
-                }
-            }
-            let _ = fs::remove_file(&brew_details);
-        }
-
-        let rustup_details = run_tmp.join("rustup_upgrade_details.txt");
-        if rustup_details.exists() {
-            if let Ok(s) = fs::read_to_string(&rustup_details) {
-                let details: Vec<String> = s.lines().map(|line| line.trim().to_string()).collect();
-                if !details.is_empty() {
-                    short_updates.insert(step.desc.to_string(), details);
-                }
-            }
-            let _ = fs::remove_file(&rustup_details);
-        }
-
-        // 更新外部进度跟踪
-        let done_count = (idx + 1) as u64;
-        let percent = (100 * (idx + 1) / total) as i32;
-        progress_update(percent, done_count, total as u64, &step.desc, &mut pb_opt);
-
-        // 直接更新进度条显示
-        if let Some(pb) = pb_opt.as_mut() {
-            pb.update_to(done_count as usize, &step.desc);
+            fail.push(result.tool.display_name().to_string());
         }
     }
 
