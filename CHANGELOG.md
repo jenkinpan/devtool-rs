@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2025-10-16
+
+### Fixed
+- **CLI Help Information**: Fixed help command display issues
+  - Corrected incomplete help information display
+  - Updated CLI about description to English for better internationalization
+  - Improved grammar in help text ("updating" instead of "development in update")
+  - Maintained Chinese command descriptions for localized user experience
+
 ## [0.7.0] - 2025-10-16
 
 ### Added
@@ -303,7 +312,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.5.6...v0.6.0
