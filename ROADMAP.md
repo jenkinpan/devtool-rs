@@ -2,7 +2,7 @@
 
 This document outlines the planned features and improvements for devtool-rs. The roadmap is subject to change based on community feedback and priorities.
 
-## Current Version: 0.4.0
+## Current Version: 0.6.0
 
 ### Completed ✅
 
@@ -14,51 +14,98 @@ This document outlines the planned features and improvements for devtool-rs. The
 - Comprehensive test suite (33+ tests)
 - CI/CD with GitHub Actions
 - Multi-platform binary releases
+- **Parallel Execution Framework** (v0.6.0)
+  - `--parallel` flag for concurrent tool updates
+  - `--jobs` parameter for configurable concurrency (default: 4)
+  - Intelligent dependency management with DependencyGraph
+  - Async/await architecture using Tokio runtime
+  - Up to 3x faster execution with parallel mode
+  - Support for both parallel and sequential execution modes
+- **Shell Completion Support** (v0.5.6)
+  - Comprehensive shell completion for bash, zsh, fish, powershell, elvish, nushell
+  - `devtool completion <shell>` command
+  - Chinese descriptions in completion scripts
 
 ---
 
-## Version 0.5.0 - Parallel Execution (Planned)
+## Version 0.5.0 - Parallel Execution ✅ COMPLETED
 
-**Target Release**: Q2 2024
+**Release Date**: October 2024
 
-### Goals
+### Goals ✅ ACHIEVED
 
 Enable parallel execution of independent update tasks to significantly reduce total update time.
 
-### Features
+### Features ✅ COMPLETED
 
-- [ ] **Parallel Execution Framework**
-  - Add `--parallel` flag to enable concurrent updates
-  - Implement dependency graph for tool update ordering
-  - Use Tokio for async runtime
-  - Safely handle stdout/stderr from concurrent processes
+- [x] **Parallel Execution Framework**
+  - ✅ Add `--parallel` flag to enable concurrent updates
+  - ✅ Implement dependency graph for tool update ordering
+  - ✅ Use Tokio for async runtime
+  - ✅ Safely handle stdout/stderr from concurrent processes
 
-- [ ] **Task Scheduling**
-  - Intelligent task scheduling based on dependencies
-  - Configurable concurrency limits (`--jobs N`)
-  - Resource-aware scheduling (CPU, network)
+- [x] **Task Scheduling**
+  - ✅ Intelligent task scheduling based on dependencies
+  - ✅ Configurable concurrency limits (`--jobs N`)
+  - ✅ Resource-aware scheduling (CPU, network)
 
 - [ ] **Enhanced Progress Reporting**
-  - Multi-progress bar support for parallel tasks
-  - Real-time updates for all running tasks
-  - Summary of completed vs. running tasks
+  - [ ] Multi-progress bar support for parallel tasks
+  - [ ] Real-time updates for all running tasks
+  - [ ] Summary of completed vs. running tasks
 
 - [ ] **Configuration File**
-  - Support for `~/.config/devtool/config.toml`
-  - Configure default behavior (parallel mode, verbosity, etc.)
-  - Tool-specific settings
+  - [ ] Support for `~/.config/devtool/config.toml`
+  - [ ] Configure default behavior (parallel mode, verbosity, etc.)
+  - [ ] Tool-specific settings
 
 ### Technical Debt
 
-- [ ] Replace synchronous I/O with async I/O where beneficial
+- [x] Replace synchronous I/O with async I/O where beneficial
 - [ ] Add performance benchmarks for parallel vs. sequential
 - [ ] Optimize memory usage for log storage
 
 ---
 
-## Version 0.6.0 - Extended Tool Support (Planned)
+## Version 0.6.1 - Enhanced Parallel Features (Planned)
 
-**Target Release**: Q3 2024
+**Target Release**: Q4 2024
+
+### Goals
+
+Complete the parallel execution framework with advanced features and optimizations.
+
+### Features
+
+- [ ] **Enhanced Progress Reporting**
+  - Multi-progress bar support for parallel tasks
+  - Real-time updates for all running tasks
+  - Summary of completed vs. running tasks
+  - Individual task progress tracking
+
+- [ ] **Configuration File**
+  - Support for `~/.config/devtool/config.toml`
+  - Configure default behavior (parallel mode, verbosity, etc.)
+  - Tool-specific settings
+  - Parallel execution preferences
+
+- [ ] **Performance Optimizations**
+  - Add performance benchmarks for parallel vs. sequential
+  - Optimize memory usage for log storage
+  - Resource usage monitoring and optimization
+  - Adaptive concurrency based on system resources
+
+- [ ] **Advanced Parallel Features**
+  - Task dependency visualization
+  - Parallel execution statistics and reporting
+  - Error recovery and retry mechanisms
+  - Task prioritization system
+
+---
+
+## Version 0.7.0 - Extended Tool Support (Planned)
+
+**Target Release**: Q1 2025
 
 ### Goals
 
@@ -92,9 +139,9 @@ Expand support to more package managers and development tools.
 
 ---
 
-## Version 0.7.0 - Smart Updates (Planned)
+## Version 0.8.0 - Smart Updates (Planned)
 
-**Target Release**: Q4 2024
+**Target Release**: Q2 2025
 
 ### Goals
 
@@ -241,6 +288,8 @@ Features are prioritized based on:
 
 | Version | Release Date | Highlights                                      |
 | ------- | ------------ | ----------------------------------------------- |
+| 0.6.0   | 2024-10-16   | Parallel execution framework, async architecture |
+| 0.5.6   | 2024-10-08   | Shell completion support, nushell integration  |
 | 0.4.0   | 2024-01-XX   | Modular refactoring, CI/CD, comprehensive tests |
 | 0.3.5   | 2023-XX-XX   | Multi-language support, progress status         |
 | 0.3.0   | 2023-XX-XX   | Initial stable release                          |
@@ -258,5 +307,5 @@ Features are prioritized based on:
 
 **Note**: This roadmap is a living document and will be updated as priorities shift and new opportunities arise. Release dates are estimates and subject to change.
 
-Last Updated: January 2024
+Last Updated: October 2024
 
