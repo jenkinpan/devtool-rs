@@ -68,11 +68,6 @@ pub struct LocalizedStrings {
     pub no_updates: String,
     pub actions_executed: String,
     pub already_latest: String,
-    pub step_homebrew_update: String,
-    pub step_homebrew_upgrade: String,
-    pub step_cleanup: String,
-    pub step_rust_update: String,
-    pub step_mise_update: String,
 }
 
 impl LocalizedStrings {
@@ -89,11 +84,6 @@ impl LocalizedStrings {
                 no_updates: "ℹ️ 无更新应用。".to_string(),
                 actions_executed: "🛠️ 已执行动作：".to_string(),
                 already_latest: "⚠️ 已是最新：".to_string(),
-                step_homebrew_update: "Homebrew：更新索引".to_string(),
-                step_homebrew_upgrade: "Homebrew：升级软件包".to_string(),
-                step_cleanup: "Action：清理旧版本".to_string(),
-                step_rust_update: "Rust：更新 stable 工具链".to_string(),
-                step_mise_update: "Mise：更新托管工具".to_string(),
             },
             _ => Self {
                 banner: "🚀 Starting devtool update: ".to_string(),
@@ -105,11 +95,6 @@ impl LocalizedStrings {
                 no_updates: "ℹ️ No updates applied.".to_string(),
                 actions_executed: "🛠️ Actions executed: ".to_string(),
                 already_latest: "⚠️ Already latest: ".to_string(),
-                step_homebrew_update: "Homebrew: Update index".to_string(),
-                step_homebrew_upgrade: "Homebrew: Upgrade packages".to_string(),
-                step_cleanup: "Action: Cleanup old versions".to_string(),
-                step_rust_update: "Rust: Update stable toolchain".to_string(),
-                step_mise_update: "Mise: Update managed tools".to_string(),
             },
         }
     }

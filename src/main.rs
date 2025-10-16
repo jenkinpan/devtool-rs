@@ -62,7 +62,6 @@ async fn execute_tool_update(
             tool: tool.clone(),
             success: true,
             output: format!("{} (dry run)", tool.display_name()),
-            error: None,
         }
     } else {
         match tool {
@@ -82,7 +81,6 @@ async fn execute_tool_update(
                     tool,
                     success,
                     output,
-                    error: None,
                 }
             }
             Tool::Rustup => {
@@ -91,7 +89,6 @@ async fn execute_tool_update(
                     tool,
                     success: result.0 == "changed",
                     output: "Rustup update completed".to_string(),
-                    error: None,
                 }
             }
             Tool::Mise => {
@@ -100,7 +97,6 @@ async fn execute_tool_update(
                     tool,
                     success: result.0 == "changed",
                     output: "Mise update completed".to_string(),
-                    error: None,
                 }
             }
         }
@@ -300,16 +296,14 @@ async fn main() -> Result<()> {
                     tool: tool.clone(),
                     success: true,
                     output: format!("{} (dry run)", tool.display_name()),
-                    error: None,
                 }
             } else {
                 match execute_tool_update(tool.clone(), dry_run, verbose, keep_logs).await {
                     Ok(result) => result,
-                    Err(e) => TaskResult {
+                    Err(e) =>                     TaskResult {
                         tool: tool.clone(),
                         success: false,
-                        output: format!("{} failed", tool.display_name()),
-                        error: Some(e.to_string()),
+                        output: format!("{} failed: {}", tool.display_name(), e),
                     },
                 }
             };

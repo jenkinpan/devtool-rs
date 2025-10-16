@@ -112,24 +112,7 @@ pub fn progress_start(total: u64, desc: &str, _pbar: &mut Option<Bar>) {
     );
 }
 
-/// 更新进度
-pub fn progress_update(percent: i32, done: u64, total: u64, desc: &str, _pbar: &mut Option<Bar>) {
-    let cache_dir = get_cache_dir();
-    let _ = fs::create_dir_all(&cache_dir);
-    let status_file = cache_dir.join("progress.status");
-    let ps = ProgressStatus {
-        state: "update".to_string(),
-        percent: Some(percent),
-        done: Some(done),
-        total: Some(total),
-        desc: Some(desc.to_string()),
-        ts: Some(chrono::Local::now().to_rfc3339()),
-    };
-    let _ = fs::write(
-        &status_file,
-        serde_json::to_string(&ps).unwrap_or_else(|_| "{}".to_string()),
-    );
-}
+// progress_update function removed - not currently used with parallel execution
 
 /// 完成进度跟踪
 pub fn progress_finish() {

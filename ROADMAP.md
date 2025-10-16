@@ -30,7 +30,7 @@ This document outlines the planned features and improvements for devtool-rs. The
 
 ## Version 0.5.0 - Parallel Execution ✅ COMPLETED
 
-**Release Date**: October 2024
+**Release Date**: October 2025
 
 ### Goals ✅ ACHIEVED
 
@@ -69,7 +69,7 @@ Enable parallel execution of independent update tasks to significantly reduce to
 
 ## Version 0.6.1 - Enhanced Parallel Features (Planned)
 
-**Target Release**: Q4 2024
+**Target Release**: Q4 2025
 
 ### Goals
 
@@ -105,7 +105,7 @@ Complete the parallel execution framework with advanced features and optimizatio
 
 ## Version 0.7.0 - Extended Tool Support (Planned)
 
-**Target Release**: Q1 2025
+**Target Release**: Q1 2026
 
 ### Goals
 
@@ -141,7 +141,7 @@ Expand support to more package managers and development tools.
 
 ## Version 0.8.0 - Smart Updates (Planned)
 
-**Target Release**: Q2 2025
+**Target Release**: Q2 2026
 
 ### Goals
 
@@ -173,7 +173,7 @@ Make devtool smarter about when and what to update.
 
 ## Version 1.0.0 - Stable Release (Planned)
 
-**Target Release**: Q1 2025
+**Target Release**: Q1 2026
 
 ### Goals
 
@@ -307,5 +307,5 @@ Features are prioritized based on:
 
 **Note**: This roadmap is a living document and will be updated as priorities shift and new opportunities arise. Release dates are estimates and subject to change.
 
-Last Updated: October 2024
+Last Updated: October 2025
 

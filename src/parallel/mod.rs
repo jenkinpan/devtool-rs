@@ -6,7 +6,7 @@
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 /// Represents a tool that can be updated
@@ -26,23 +26,9 @@ impl Tool {
             Tool::Mise => "Mise",
         }
     }
-
-    /// Get the command name for the tool
-    pub fn command_name(&self) -> &'static str {
-        match self {
-            Tool::Homebrew => "brew",
-            Tool::Rustup => "rustup",
-            Tool::Mise => "mise",
-        }
-    }
 }
 
-/// Represents the dependencies between tools
-#[derive(Debug, Clone)]
-pub struct ToolDependency {
-    pub tool: Tool,
-    pub depends_on: Vec<Tool>,
-}
+// ToolDependency struct removed - not currently used
 
 /// Dependency graph for tool update ordering
 #[derive(Debug)]
@@ -60,18 +46,7 @@ impl DependencyGraph {
         }
     }
 
-    /// Add a dependency relationship
-    pub fn add_dependency(&mut self, tool: Tool, depends_on: Tool) {
-        self.dependencies
-            .entry(tool.clone())
-            .or_insert_with(Vec::new)
-            .push(depends_on.clone());
-
-        self.reverse_dependencies
-            .entry(depends_on)
-            .or_insert_with(Vec::new)
-            .push(tool);
-    }
+    // add_dependency method removed - not currently used
 
     /// Get tools that have no dependencies (can be run first)
     pub fn get_ready_tools(&self, available_tools: &HashSet<Tool>) -> Vec<Tool> {
@@ -123,21 +98,21 @@ pub struct TaskResult {
     pub tool: Tool,
     pub success: bool,
     pub output: String,
-    pub error: Option<String>,
+    // error field removed - not currently used
 }
 
 /// Parallel task scheduler
 pub struct ParallelScheduler {
-    semaphore: Arc<Semaphore>,
+    // semaphore field removed - not currently used
     completed_tools: Arc<Mutex<HashSet<Tool>>>,
     dependency_graph: Arc<DependencyGraph>,
 }
 
 impl ParallelScheduler {
     /// Create a new parallel scheduler
-    pub fn new(max_concurrent: usize) -> Self {
+    pub fn new(_max_concurrent: usize) -> Self {
         Self {
-            semaphore: Arc::new(Semaphore::new(max_concurrent)),
+            // semaphore removed - not currently used
             completed_tools: Arc::new(Mutex::new(HashSet::new())),
             dependency_graph: Arc::new(DependencyGraph::default()),
         }
