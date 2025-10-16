@@ -5,6 +5,8 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use clap_complete::Shell;
 use clap_complete_nushell::Nushell;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use std::sync::Arc;
 use tempfile::tempdir;
 use which::which;
 
@@ -24,7 +26,16 @@ use i18n::LocalizedStrings;
 use parallel::{ParallelScheduler, TaskResult, Tool};
 use runner::ShellRunner;
 use ui::colors::{print_banner, print_error, print_info, print_success, print_warning};
-use ui::progress::{progress_finish, progress_start, progress_status_cmd, Bar};
+use ui::progress::progress_status_cmd;
+
+/// Get detailed description of what a tool will do
+fn get_tool_description(tool: &Tool) -> String {
+    match tool {
+        Tool::Homebrew => "Homebrew update & upgrade & cleanup".to_string(),
+        Tool::Rustup => "Rustup all toolchains update".to_string(),
+        Tool::Mise => "Mise tools update".to_string(),
+    }
+}
 
 /// Execute tool updates in parallel
 async fn execute_parallel_updates(
@@ -37,11 +48,71 @@ async fn execute_parallel_updates(
 ) -> Result<Vec<TaskResult>> {
     let scheduler = ParallelScheduler::new(jobs);
 
+    // 创建多进度条管理器
+    let multi_progress = Arc::new(MultiProgress::new());
+    let mut progress_bars: Vec<(Tool, ProgressBar)> = Vec::new();
+
+    // 为每个工具创建进度条
+    for tool in &tools {
+        let pb = multi_progress.add(ProgressBar::new(100));
+
+        // 设置进度条样式
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("{spinner:.green} [{elapsed_precise}] [{bar:25.cyan/blue}] {pos}% {msg}")
+                .unwrap()
+                .progress_chars("#>-"),
+        );
+
+        pb.set_message(format!("{} 准备中...", tool.display_name()));
+        // 启用自动刷新以显示实时时间
+        pb.enable_steady_tick(std::time::Duration::from_millis(100));
+        progress_bars.push((tool.clone(), pb));
+    }
+
     let update_fn = move |tool: Tool| {
         let tool_clone = tool.clone();
-        tokio::spawn(
-            async move { execute_tool_update(tool_clone, dry_run, verbose, keep_logs).await },
-        )
+        let _multi_progress = multi_progress.clone();
+        let progress_bars = progress_bars.clone();
+
+        tokio::spawn(async move {
+            // 找到对应的进度条
+            let pb = progress_bars
+                .iter()
+                .find(|(t, _)| *t == tool_clone)
+                .map(|(_, pb)| pb.clone());
+
+            if let Some(pb) = pb {
+                // 更新进度条状态
+                pb.set_message(format!("{} 执行中...", tool_clone.display_name()));
+                pb.set_position(25);
+
+                // 执行工具更新
+                let result =
+                    execute_tool_update(tool_clone.clone(), dry_run, verbose, keep_logs).await;
+
+                // 更新进度条到完成状态
+                pb.set_position(100);
+                match &result {
+                    Ok(task_result) => {
+                        if task_result.success {
+                            pb.set_message(format!("✅ {} 完成", tool_clone.display_name()));
+                        } else {
+                            pb.set_message(format!("❌ {} 失败", tool_clone.display_name()));
+                        }
+                    }
+                    Err(_) => {
+                        pb.set_message(format!("❌ {} 错误", tool_clone.display_name()));
+                    }
+                }
+                pb.finish();
+
+                result
+            } else {
+                // 如果没有找到进度条，直接执行
+                execute_tool_update(tool_clone, dry_run, verbose, keep_logs).await
+            }
+        })
     };
 
     scheduler.execute_parallel(tools, update_fn).await
@@ -167,7 +238,7 @@ async fn main() -> Result<()> {
     }
 
     // 获取 update 命令的参数，如果没有指定命令则使用默认值
-    let (dry_run, verbose, no_color, keep_logs, parallel, jobs, no_banner, _compact) =
+    let (dry_run, verbose, no_color, keep_logs, parallel, sequential, jobs, no_banner, _compact) =
         match &args.command {
             Some(Commands::Update {
                 dry_run,
@@ -175,13 +246,22 @@ async fn main() -> Result<()> {
                 no_color,
                 keep_logs,
                 parallel,
+                sequential,
                 jobs,
                 no_banner,
                 compact,
             }) => (
-                *dry_run, *verbose, *no_color, *keep_logs, *parallel, *jobs, *no_banner, *compact,
+                *dry_run,
+                *verbose,
+                *no_color,
+                *keep_logs,
+                *parallel,
+                *sequential,
+                *jobs,
+                *no_banner,
+                *compact,
             ),
-            None => (false, false, false, false, false, 4, false, false), // 默认值
+            None => (false, false, false, false, true, false, 3, false, false), // 默认值：并行执行，3个任务
             _ => return Ok(()),
         };
 
@@ -267,8 +347,8 @@ async fn main() -> Result<()> {
     let tmp = tempdir()?;
     let _run_tmp = tmp.path().to_path_buf();
 
-    // 创建进度条
-    let mut pb_opt = Some(Bar::new(total, "devtool"));
+    // 不再使用自建进度条，完全使用 indicatif
+    // let mut pb_opt = Some(Bar::new(total, "devtool"));
 
     // 打印工具列表
     let tools_msg = format!(
@@ -281,23 +361,21 @@ async fn main() -> Result<()> {
         println!("{}", tools_msg);
     }
     for (i, tool) in available_tools.iter().enumerate() {
-        println!("  {}) {}", i + 1, tool.display_name());
+        let tool_description = get_tool_description(tool);
+        println!("  {}) {}", i + 1, tool_description);
     }
 
-    // 开始外部进度跟踪
-    progress_start(total as u64, "devtool", &mut pb_opt);
-
-    // 初始化进度条显示
-    if let Some(pb) = pb_opt.as_mut() {
-        pb.update_to(0, &localized.progress_preparing);
-    }
+    // 完全使用 indicatif 进度条，不再使用自建进度条
 
     // 执行工具更新
     let mut results: Vec<TaskResult> = Vec::new();
     let short_updates: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
 
-    if parallel {
+    // 确定执行模式：如果指定了 sequential，则顺序执行；否则并行执行
+    let use_parallel = parallel && !sequential;
+
+    if use_parallel {
         // 并行执行
         if verbose {
             println!("🚀 并行执行模式 (最大并发数: {})", jobs);
@@ -312,8 +390,42 @@ async fn main() -> Result<()> {
         )
         .await?;
     } else {
-        // 顺序执行
-        for (_idx, tool) in available_tools.iter().enumerate() {
+        // 顺序执行 - 使用 indicatif 进度条
+        if verbose {
+            println!("🔄 顺序执行模式");
+        }
+        let multi_progress = Arc::new(MultiProgress::new());
+        let mut progress_bars: Vec<(Tool, ProgressBar)> = Vec::new();
+
+        // 为每个工具创建进度条
+        for tool in &available_tools {
+            let pb = multi_progress.add(ProgressBar::new(100));
+
+            // 设置进度条样式
+            pb.set_style(
+                ProgressStyle::default_bar()
+                    .template(
+                        "{spinner:.green} [{elapsed_precise}] [{bar:25.cyan/blue}] {pos}% {msg}",
+                    )
+                    .unwrap()
+                    .progress_chars("#>-"),
+            );
+
+            pb.set_message(format!("{} 准备中...", tool.display_name()));
+            // 启用自动刷新以显示实时时间
+            pb.enable_steady_tick(std::time::Duration::from_millis(100));
+            progress_bars.push((tool.clone(), pb));
+        }
+
+        // 顺序执行每个工具
+        for tool in available_tools.iter() {
+            // 找到对应的进度条
+            if let Some((_, pb)) = progress_bars.iter().find(|(t, _)| *t == *tool) {
+                // 更新进度条状态
+                pb.set_message(format!("{} 执行中...", tool.display_name()));
+                pb.set_position(25);
+            }
+
             let result = if dry_run {
                 TaskResult {
                     tool: tool.clone(),
@@ -335,7 +447,24 @@ async fn main() -> Result<()> {
                     }
                 }
             };
+
+            // 更新进度条到完成状态
+            if let Some((_, pb)) = progress_bars.iter().find(|(t, _)| *t == *tool) {
+                pb.set_position(100);
+                if result.success {
+                    pb.set_message(format!("✅ {} 完成", tool.display_name()));
+                } else {
+                    pb.set_message(format!("❌ {} 失败", tool.display_name()));
+                }
+                pb.finish();
+            }
+
             results.push(result);
+
+            // 使用 indicatif 进度条，不需要更新旧进度条
+            // if let Some(pb) = pb_opt.as_mut() {
+            //     pb.update_to(idx + 1, &format!("{} 完成", tool.display_name()));
+            // }
         }
     }
 
@@ -362,14 +491,12 @@ async fn main() -> Result<()> {
         }
     }
 
-    // 完成进度跟踪
-    if let Some(pb) = pb_opt.as_mut() {
-        pb.update_to(total, &localized.progress_complete);
-    }
+    // 使用 indicatif 进度条，不需要旧进度条
     println!(); // 换行
-    if !dry_run {
-        progress_finish();
-    }
+                // 使用 indicatif 进度条，不需要 progress_finish
+                // if !dry_run {
+                //     progress_finish();
+                // }
 
     // 计算总耗时
     let end_time = chrono::Local::now();

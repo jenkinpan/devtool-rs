@@ -1,6 +1,6 @@
 [package]
 name = "devtool"
-version = "0.6.1"
+version = "0.7.0"
 edition = "2021"
 description = "A CLI tool for development in update rustup toolchain, mise maintained tools and homebrew packages."
 documentation = "https://docs.rs/devtool"
@@ -14,6 +14,10 @@ categories = ["command-line-utilities", "development-tools"]
 [[bench]]
 harness = false
 name = "command_execution"
+
+[[bench]]
+harness = false
+name = "parallel_execution"
 
 [dependencies]
 anyhow = "1.0"
@@ -30,6 +34,7 @@ serde_json = "1.0"
 tempfile = "3.10"
 tokio = { version = "1.0", features = ["full"] }
 which = "8.0"
+indicatif = "0.18"
 
 [dev-dependencies]
 criterion = "0.7"

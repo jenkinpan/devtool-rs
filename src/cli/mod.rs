@@ -46,12 +46,16 @@ pub enum Commands {
         #[arg(long = "keep-logs")]
         keep_logs: bool,
 
-        /// 并行执行更新步骤
-        #[arg(long = "parallel")]
+        /// 并行执行更新步骤 (默认启用)
+        #[arg(long = "parallel", default_value_t = true)]
         parallel: bool,
 
+        /// 顺序执行更新步骤 (覆盖并行模式)
+        #[arg(long = "sequential")]
+        sequential: bool,
+
         /// 并行任务数量限制
-        #[arg(long = "jobs", default_value_t = 4)]
+        #[arg(long = "jobs", default_value_t = 3)]
         jobs: usize,
 
         /// 不显示启动横幅

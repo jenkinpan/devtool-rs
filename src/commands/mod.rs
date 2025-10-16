@@ -5,13 +5,7 @@ pub mod homebrew;
 pub mod mise;
 pub mod rustup;
 
-// Unused imports removed - no longer needed with parallel execution framework
-
 // 重新导出各个模块的公共函数
 pub use homebrew::{brew_cleanup, brew_update, brew_upgrade};
 pub use mise::mise_up;
 pub use rustup::rustup_update;
-
-// StepFn type alias removed - no longer used with parallel execution framework
-
-// Step struct and related code removed - no longer used with parallel execution framework

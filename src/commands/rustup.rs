@@ -6,8 +6,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::runner::{run_command, Runner};
-use crate::ui::progress::Bar;
+use crate::runner::Runner;
 
 /// 提取 Rust 版本号
 ///
@@ -21,9 +20,38 @@ fn extract_rust_version(version_output: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-/// Rustup 更新 stable 工具链
+/// 获取所有已安装工具链的版本信息
+fn get_toolchain_versions(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<(String, String)>> {
+    let mut versions = Vec::new();
+
+    // 获取所有已安装的工具链
+    let (_, toolchains_output) =
+        runner.run("rustup show", &tmpdir.join("rustup_show.log"), false)?;
+
+    // 解析工具链信息
+    for line in toolchains_output.lines() {
+        if line.contains("stable-") || line.contains("nightly-") || line.contains("beta-") {
+            // 提取工具链名称和版本
+            if let Some(toolchain) = line.split_whitespace().next() {
+                // 获取该工具链的 rustc 版本
+                let cmd = format!("rustup run {} rustc --version", toolchain);
+                if let Ok((_, version_output)) =
+                    runner.run(&cmd, &tmpdir.join("toolchain_version.log"), false)
+                {
+                    if let Some(version) = extract_rust_version(&version_output) {
+                        versions.push((toolchain.to_string(), version));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(versions)
+}
+
+/// Rustup 更新所有工具链
 ///
-/// 执行 `rustup update stable` 更新 Rust 的 stable 工具链
+/// 执行 `rustup update` 更新所有已安装的 Rust 工具链
 ///
 /// # 参数
 /// * `runner` - 命令执行器
@@ -40,50 +68,70 @@ pub fn rustup_update(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    pbar: &mut Option<Bar>,
+    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("rustup_update.log");
 
-    // 获取更新前的版本信息
-    let (_, version_before) =
-        runner.run("rustc --version", &tmpdir.join("rustc_before.log"), false)?;
-    let version_before = version_before.trim().to_string();
+    // 获取更新前的所有工具链版本信息
+    let versions_before = get_toolchain_versions(runner, tmpdir).unwrap_or_default();
 
-    // 执行更新
-    let (rc, out) = runner.run("rustup update stable", &logfile, verbose)?;
+    // 执行更新 - 更新所有已安装的工具链
+    let (rc, out) = runner.run("rustup update", &logfile, verbose)?;
 
     if rc != 0 {
         return Ok(("failed".to_string(), rc, logfile));
     }
 
-    // 获取更新后的版本信息
-    let (_, version_after) = run_command(
-        "rustc --version",
-        &tmpdir.join("rustc_after.log"),
-        false,
-        pbar,
-    )
-    .ok()
-    .unwrap_or((1, String::new()));
-    let version_after = version_after.trim().to_string();
+    // 获取更新后的所有工具链版本信息
+    let versions_after = get_toolchain_versions(runner, tmpdir).unwrap_or_default();
 
-    // 检查版本是否真的有变化
+    // 检查是否有任何工具链版本发生变化
+    let mut has_changes = false;
+    let mut upgrade_details = Vec::new();
+
+    for (toolchain, version_before) in &versions_before {
+        if let Some(version_after) = versions_after
+            .iter()
+            .find(|(tc, _)| tc == toolchain)
+            .map(|(_, version)| version)
+        {
+            if version_before != version_after {
+                has_changes = true;
+                upgrade_details.push(format!(
+                    "{}: {} → {}",
+                    toolchain, version_before, version_after
+                ));
+            }
+        }
+    }
+
+    // 检查是否有新安装的工具链
+    for (toolchain, version_after) in &versions_after {
+        if !versions_before.iter().any(|(tc, _)| tc == toolchain) {
+            has_changes = true;
+            upgrade_details.push(format!(
+                "{}: new installation → {}",
+                toolchain, version_after
+            ));
+        }
+    }
+
+    // 检查输出中是否包含 "unchanged" 或 "up to date"
     let out_text = out.to_lowercase();
     let is_unchanged = out_text.contains("unchanged")
         || out_text.contains("up to date")
-        || version_before == version_after;
+        || (!has_changes && upgrade_details.is_empty());
 
     let state = if is_unchanged {
         "unchanged"
     } else {
-        // 解析版本信息并保存升级详情
-        if let (Some(before), Some(after)) = (
-            extract_rust_version(&version_before),
-            extract_rust_version(&version_after),
-        ) {
+        // 保存升级详情
+        if !upgrade_details.is_empty() {
             let details_file = tmpdir.join("rustup_upgrade_details.txt");
             if let Ok(mut file) = File::create(&details_file) {
-                let _ = writeln!(file, "rustc: {} → {}", before, after);
+                for detail in upgrade_details {
+                    let _ = writeln!(file, "{}", detail);
+                }
             }
         }
         "changed"

@@ -9,7 +9,6 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::runner::Runner;
-use crate::ui::progress::Bar;
 
 /// 解析 Mise 版本信息
 ///
@@ -88,7 +87,7 @@ pub fn mise_up(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    _pbar: &mut Option<Bar>,
+    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("mise_up.log");
 

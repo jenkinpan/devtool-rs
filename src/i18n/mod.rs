@@ -61,8 +61,6 @@ pub fn detect_system_language() -> String {
 pub struct LocalizedStrings {
     pub banner: String,
     pub steps_count: String,
-    pub progress_preparing: String,
-    pub progress_complete: String,
     pub update_complete: String,
     pub time_taken: String,
     pub no_updates: String,
@@ -77,8 +75,6 @@ impl LocalizedStrings {
             "zh" => Self {
                 banner: "🚀 开始 devtool 更新：".to_string(),
                 steps_count: "将执行 {} 个步骤：".to_string(),
-                progress_preparing: "准备开始".to_string(),
-                progress_complete: "完成".to_string(),
                 update_complete: "🎉 更新完成：".to_string(),
                 time_taken: "耗时".to_string(),
                 no_updates: "ℹ️ 无更新应用。".to_string(),
@@ -88,8 +84,6 @@ impl LocalizedStrings {
             _ => Self {
                 banner: "🚀 Starting devtool update: ".to_string(),
                 steps_count: "Will execute {} steps:".to_string(),
-                progress_preparing: "Preparing to start".to_string(),
-                progress_complete: "Complete".to_string(),
                 update_complete: "🎉 Update completed: ".to_string(),
                 time_taken: "Time taken".to_string(),
                 no_updates: "ℹ️ No updates applied.".to_string(),

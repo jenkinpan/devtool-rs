@@ -8,7 +8,6 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::runner::Runner;
-use crate::ui::progress::Bar;
 
 /// 分析 Homebrew 升级情况
 ///
@@ -114,7 +113,7 @@ pub fn brew_update(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    _pbar: &mut Option<Bar>,
+    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_update.log");
 
@@ -161,7 +160,7 @@ pub fn brew_upgrade(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    _pbar: &mut Option<Bar>,
+    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_upgrade.log");
 
@@ -239,7 +238,7 @@ pub fn brew_cleanup(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    pbar: &mut Option<Bar>,
+    pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     use crate::runner::run_command;
 

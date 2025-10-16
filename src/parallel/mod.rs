@@ -28,8 +28,6 @@ impl Tool {
     }
 }
 
-// ToolDependency struct removed - not currently used
-
 /// Dependency graph for tool update ordering
 #[derive(Debug)]
 pub struct DependencyGraph {
@@ -45,8 +43,6 @@ impl DependencyGraph {
             reverse_dependencies: HashMap::new(),
         }
     }
-
-    // add_dependency method removed - not currently used
 
     /// Get tools that have no dependencies (can be run first)
     pub fn get_ready_tools(&self, available_tools: &HashSet<Tool>) -> Vec<Tool> {
@@ -81,14 +77,11 @@ impl DependencyGraph {
 
 impl Default for DependencyGraph {
     fn default() -> Self {
-        let graph = Self::new();
-
         // Define tool dependencies
         // Homebrew and Rustup can run in parallel
         // Mise can run in parallel with others
         // No dependencies for now, but this structure allows for future dependencies
-
-        graph
+        Self::new()
     }
 }
 
@@ -98,12 +91,10 @@ pub struct TaskResult {
     pub tool: Tool,
     pub success: bool,
     pub output: String,
-    // error field removed - not currently used
 }
 
 /// Parallel task scheduler
 pub struct ParallelScheduler {
-    // semaphore field removed - not currently used
     completed_tools: Arc<Mutex<HashSet<Tool>>>,
     dependency_graph: Arc<DependencyGraph>,
 }
@@ -112,7 +103,6 @@ impl ParallelScheduler {
     /// Create a new parallel scheduler
     pub fn new(_max_concurrent: usize) -> Self {
         Self {
-            // semaphore removed - not currently used
             completed_tools: Arc::new(Mutex::new(HashSet::new())),
             dependency_graph: Arc::new(DependencyGraph::default()),
         }
@@ -197,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_dependency_graph() {
-        let mut graph = DependencyGraph::new();
+        let graph = DependencyGraph::new();
         let homebrew = Tool::Homebrew;
         let rustup = Tool::Rustup;
         let mise = Tool::Mise;

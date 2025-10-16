@@ -6,8 +6,6 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::ui::progress::Bar;
-
 /// 命令执行器 trait
 pub trait Runner {
     fn run(&self, cmd: &str, logfile: &Path, verbose: bool) -> Result<(i32, String)>;
@@ -37,7 +35,7 @@ pub fn run_command(
     cmd: &str,
     logfile: &Path,
     verbose: bool,
-    pbar: &mut Option<Bar>,
+    pbar: &mut Option<()>,
 ) -> Result<(i32, String)> {
     // 创建日志文件，使用 Arc<Mutex<..>> 在多线程间共享
     let file = File::create(logfile).with_context(|| format!("create logfile {:?}", logfile))?;

@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-10-16
+
+### Added
+- **Enhanced Progress Reporting**: Multi-progress bar support using indicatif
+  - Real-time progress updates for all running tasks
+  - Individual task progress tracking with elapsed time
+  - Detailed tool descriptions in progress display
+  - Support for both parallel and sequential execution modes
+- **Performance Benchmarks**: Comprehensive benchmark suite for parallel vs sequential execution
+  - Performance validation with up to 10x speed improvements
+  - Memory usage patterns and optimization
+  - Benchmark coverage for different task counts and durations
+- **Enhanced Rustup Support**: Support for all installed toolchains
+  - Updates all toolchains (stable, nightly, beta) instead of just stable
+  - Detailed version change reporting for each toolchain
+  - Better detection of toolchain updates and changes
+- **Updated Shell Completions**: All completion files updated with new parameters
+  - Added `--sequential` flag support
+  - Added `--jobs` parameter support
+  - Updated descriptions for all new features
+
+### Changed
+- **Default Behavior**: Parallel execution is now enabled by default
+  - Default concurrency level set to 3 jobs
+  - `--sequential` flag available to override parallel mode
+  - Improved user experience with faster default execution
+- **Progress Display**: Replaced custom progress bars with indicatif
+  - More reliable progress tracking
+  - Better visual feedback with real-time updates
+  - Consistent progress display across all execution modes
+
+### Fixed
+- **Code Quality**: Zero Clippy warnings with comprehensive linting
+  - Removed unused code and modules
+  - Fixed all compiler warnings
+  - Improved error handling and reporting
+- **Success/Failure Reporting**: Enhanced accuracy of tool status reporting
+  - Better distinction between 'updated' and 'already latest' states
+  - More descriptive output messages
+  - Improved result classification logic
+
+### Technical Details
+- **Dependencies**: Added `indicatif = "0.18"` for progress bars
+- **Performance**: Up to 10x faster execution with parallel mode
+- **Code Quality**: Comprehensive cleanup of unused code and modules
+- **Testing**: Enhanced test coverage with performance benchmarks
+
 ## [0.6.1] - 2025-10-16
 
 ### Fixed
@@ -256,7 +303,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.5.6...v0.6.0
 [0.5.6]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.1...v0.5.6

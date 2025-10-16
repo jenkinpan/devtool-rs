@@ -12,14 +12,17 @@ English | [简体中文](README_zh.md)
 ## ✨ Features
 
 - **One-command updates**: Run `devtool` to automatically update multiple supported tools
-- **🚀 Parallel execution**: Use `--parallel` flag for up to 3x faster updates with concurrent tool execution
+- **🚀 Parallel execution**: Default parallel execution for up to 10x faster updates with concurrent tool execution
 - **Smart detection**: Automatically detects installed tools (Homebrew, rustup, mise) and skips uninstalled ones
-- **Beautiful progress feedback**: Real-time progress bars and status updates in the terminal
+- **Enhanced progress feedback**: Multi-progress bars with real-time updates and elapsed time tracking
 - **Detailed logging**: Each step's output is logged for easy troubleshooting
 - **Execution summary**: Clear summary showing which tools were updated, already latest, or failed
 - **Dry run mode**: Use `--dry-run` to preview steps without making changes
+- **Flexible execution modes**: Choose between parallel (default) or sequential execution with `--sequential`
+- **Configurable concurrency**: Set the number of concurrent jobs with `--jobs` (default: 3)
 - **External status monitoring**: Query real-time status with `devtool progress-status` for integration with other tools
 - **Multi-language support**: Automatically detects system language and displays Chinese or English interface
+- **Shell completion**: Comprehensive completion support for bash, zsh, fish, powershell, elvish, and nushell
 - **Version information**: Check version with `devtool -V` or `devtool --version`
 
 ## 🛠️ Supported Tools
@@ -27,7 +30,7 @@ English | [简体中文](README_zh.md)
 `devtool` currently supports automatic detection and updating of:
 
 - **Homebrew**: Update index, upgrade packages, cleanup old versions
-- **Rust (rustup)**: Update `stable` Rust toolchain
+- **Rust (rustup)**: Update all installed Rust toolchains (stable, nightly, beta)
 - **Mise** (formerly rtx): Run `mise up` to update all managed languages and tools (Node.js, Python, etc.)
 
 ## 📦 Installation
@@ -61,24 +64,28 @@ devtool
 
 This is equivalent to running `devtool update`.
 
-### Parallel Execution (New in v0.6.0)
+### Parallel Execution (Default in v0.7.0)
 
-For faster updates, use the new parallel execution mode:
+Parallel execution is now the default mode for faster updates:
 
 ```bash
-# Enable parallel execution with default 4 concurrent jobs
-devtool --parallel
+# Default parallel execution with 3 concurrent jobs
+devtool
 
 # Control the number of concurrent jobs
-devtool --parallel --jobs 2
+devtool --jobs 5
+
+# Sequential execution (override parallel mode)
+devtool --sequential
 
 # Parallel execution with dry run
-devtool --parallel --jobs 3 --dry-run
+devtool --jobs 3 --dry-run
 ```
 
 **Performance Benefits:**
-- Up to 3x faster execution with parallel mode
-- Configurable concurrency with `--jobs` parameter
+- Up to 10x faster execution with parallel mode (default)
+- Configurable concurrency with `--jobs` parameter (default: 3)
+- Choose between parallel (default) or sequential execution
 - Intelligent dependency management
 - Maintains all safety features of sequential mode
 
@@ -86,36 +93,40 @@ devtool --parallel --jobs 3 --dry-run
 
 Customize `devtool` behavior with these options:
 
-| Option        | Short | Description                                                            |
-| ------------- | ----- | ---------------------------------------------------------------------- |
-| `--dry-run`   | `-n`  | Show steps that would be executed without actually running them        |
-| `--verbose`   | `-v`  | Print detailed output for each step during execution                   |
-| `--version`   | `-V`  | Show version information                                               |
-| `--keep-logs` |       | Keep log files for each step, stored in `~/.cache/devtool/` by default |
-| `--no-banner` |       | Don't show startup banner                                              |
-| `--compact`   |       | Use more compact output format for non-interactive environments        |
-| `--parallel`  |       | (Not implemented) Execute update steps in parallel                     |
-| `--no-color`  |       | Disable colored output                                                 |
-| `--help`      | `-h`  | Show help information                                                  |
+| Option         | Short | Description                                                            |
+| -------------- | ----- | ---------------------------------------------------------------------- |
+| `--dry-run`    | `-n`  | Show steps that would be executed without actually running them        |
+| `--verbose`    | `-v`  | Print detailed output for each step during execution                   |
+| `--version`    | `-V`  | Show version information                                               |
+| `--keep-logs`  |       | Keep log files for each step, stored in `~/.cache/devtool/` by default |
+| `--no-banner`  |       | Don't show startup banner                                              |
+| `--compact`    |       | Use more compact output format for non-interactive environments        |
+| `--parallel`   |       | Execute update steps in parallel (default)                             |
+| `--sequential` |       | Execute update steps sequentially (override parallel mode)            |
+| `--jobs`       |       | Number of concurrent jobs for parallel execution (default: 3)         |
+| `--no-color`   |       | Disable colored output                                                 |
+| `--help`       | `-h`  | Show help information                                                  |
 
 ### Examples
 
-**Standard update:**
+**Standard update (parallel execution by default):**
 
 ```bash
 $ devtool
-🚀 Starting devtool update: 2025-10-04 13:17:20
-📋 Will execute 5 steps:
-  1) Homebrew: Update index
-  2) Homebrew: Upgrade packages
-  3) Action: Cleanup old versions
-  4) Rust: Update stable toolchain
-  5) Mise: Update managed tools
-[========================================] 5/5 (100%) | Mise: Update managed tools
+🚀 Starting devtool update: 2025-10-16 16:59:41
+📋 Will execute 3 steps:
+  1) Homebrew update & upgrade & cleanup
+  2) Rustup all toolchains update
+  3) Mise tools update
+🚀 Parallel execution mode (max concurrent: 3)
+[00:00:11] [#########################] 100% ✅ Homebrew 完成
+[00:00:12] [#########################] 100% ✅ Rustup 完成
+[00:00:12] [#########################] 100% ✅ Mise 完成
 
-🎉 Update completed: 2025-10-04 13:18:04 (Time taken: 14秒)
-✅ Updated: Action: Cleanup old versions
-⚠️ Already latest: Homebrew: Update index, Homebrew: Upgrade packages, Rust: Update stable toolchain, Mise: Update managed tools
+🎉 Update completed: 2025-10-16 16:59:45 (Time taken: 19秒)
+ℹ️ No updates applied.
+⚠️ Already latest: Rustup, Mise
+✅ Updated: Homebrew
 ```
 
 **Dry run:**
@@ -143,6 +154,48 @@ devtool progress-status
 **Language support:**
 
 The tool automatically detects your system language and displays the interface in Chinese or English accordingly.
+
+## 🐚 Shell Completion
+
+`devtool` provides comprehensive shell completion support for all major shells:
+
+### Generate Completion Scripts
+
+```bash
+# Generate completion for your shell
+devtool completion bash    # For bash
+devtool completion zsh     # For zsh
+devtool completion fish    # For fish
+devtool completion powershell  # For PowerShell
+devtool completion elvish  # For Elvish
+devtool completion nushell # For Nushell
+```
+
+### Setup Completion
+
+**Bash:**
+```bash
+# Add to ~/.bashrc
+source <(devtool completion bash)
+```
+
+**Zsh:**
+```bash
+# Add to ~/.zshrc
+source <(devtool completion zsh)
+```
+
+**Fish:**
+```bash
+# Add to ~/.config/fish/config.fish
+devtool completion fish | source
+```
+
+**Nushell:**
+```nu
+# Add to your config.nu
+use ~/.config/nushell/completions/devtool-completions.nu *
+```
 
 ## 🔧 Troubleshooting
 
