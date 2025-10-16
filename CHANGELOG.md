@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-10-16
+
+### Fixed
+- **Improved Success/Failure Reporting Logic**: Enhanced accuracy of tool status reporting
+  - Fixed tools incorrectly showing as 'failed' when they were actually up-to-date
+  - Distinguish between 'updated' and 'already latest' states for better user feedback
+  - Updated output messages to be more descriptive:
+    - `"Homebrew updated"` vs `"Homebrew already latest"`
+    - `"Rustup updated"` vs `"Rustup already latest"`
+    - `"Mise updated"` vs `"Mise already latest"`
+  - Fixed result classification logic to properly categorize tools based on actual changes
+  - Maintained success status for both updated and unchanged tools
+  - Consistent behavior in both sequential and parallel execution modes
+
+### Technical Details
+- Enhanced `execute_tool_update` function to detect actual changes vs no-changes
+- Improved result processing logic to correctly classify tool outcomes
+- Better user experience with accurate status reporting
+- Fixed misleading 'updated' status for tools that were already latest
+
 ## [0.6.0] - 2025-10-16
 
 ### Added
@@ -236,7 +256,9 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.5.6...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.5.6...v0.6.0
 [0.5.6]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.1...v0.5.6
 [0.4.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.3.5...v0.4.0

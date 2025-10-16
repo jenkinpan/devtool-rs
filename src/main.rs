@@ -71,11 +71,20 @@ async fn execute_tool_update(
                 let upgrade_result = brew_upgrade(&runner, &run_tmp, verbose, &mut None)?;
                 let cleanup_result = brew_cleanup(&runner, &run_tmp, verbose, &mut None)?;
 
-                // Combine results - consider both "changed" and "unchanged" as success
+                // Check if any step had changes
+                let has_changes = update_result.0 == "changed"
+                    || upgrade_result.0 == "changed"
+                    || cleanup_result.0 == "changed";
+
                 let success = (update_result.0 == "changed" || update_result.0 == "unchanged")
                     && (upgrade_result.0 == "changed" || upgrade_result.0 == "unchanged")
                     && (cleanup_result.0 == "changed" || cleanup_result.0 == "unchanged");
-                let output = format!("Homebrew update completed");
+
+                let output = if has_changes {
+                    "Homebrew updated".to_string()
+                } else {
+                    "Homebrew already latest".to_string()
+                };
 
                 TaskResult {
                     tool,
@@ -85,18 +94,32 @@ async fn execute_tool_update(
             }
             Tool::Rustup => {
                 let result = rustup_update(&runner, &run_tmp, verbose, &mut None)?;
+                let has_changes = result.0 == "changed";
+                let output = if has_changes {
+                    "Rustup updated".to_string()
+                } else {
+                    "Rustup already latest".to_string()
+                };
+
                 TaskResult {
                     tool,
                     success: result.0 == "changed" || result.0 == "unchanged",
-                    output: "Rustup update completed".to_string(),
+                    output,
                 }
             }
             Tool::Mise => {
                 let result = mise_up(&runner, &run_tmp, verbose, &mut None)?;
+                let has_changes = result.0 == "changed";
+                let output = if has_changes {
+                    "Mise updated".to_string()
+                } else {
+                    "Mise already latest".to_string()
+                };
+
                 TaskResult {
                     tool,
                     success: result.0 == "changed" || result.0 == "unchanged",
-                    output: "Mise update completed".to_string(),
+                    output,
                 }
             }
         }
@@ -309,7 +332,7 @@ async fn main() -> Result<()> {
                             success: false,
                             output: format!("{} failed: {}", tool.display_name(), e),
                         }
-                    },
+                    }
                 }
             };
             results.push(result);
@@ -326,9 +349,12 @@ async fn main() -> Result<()> {
     for result in &results {
         if result.success {
             succ.push(result.tool.display_name().to_string());
-            if result.output.contains("completed") {
+            if result.output.contains("updated") {
                 updated.push(result.tool.display_name().to_string());
+            } else if result.output.contains("already latest") {
+                unchanged.push(result.tool.display_name().to_string());
             } else {
+                // Fallback for other successful cases
                 unchanged.push(result.tool.display_name().to_string());
             }
         } else {
