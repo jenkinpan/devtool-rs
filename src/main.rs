@@ -50,14 +50,14 @@ async fn execute_parallel_updates(
 /// Execute a single tool update
 async fn execute_tool_update(
     tool: Tool,
-    _dry_run: bool,
+    dry_run: bool,
     verbose: bool,
     _keep_logs: bool,
 ) -> Result<TaskResult> {
     let runner = ShellRunner;
     let run_tmp = std::env::temp_dir();
 
-    let result = if _dry_run {
+    let result = if dry_run {
         TaskResult {
             tool: tool.clone(),
             success: true,
@@ -71,10 +71,10 @@ async fn execute_tool_update(
                 let upgrade_result = brew_upgrade(&runner, &run_tmp, verbose, &mut None)?;
                 let cleanup_result = brew_cleanup(&runner, &run_tmp, verbose, &mut None)?;
 
-                // Combine results
-                let success = update_result.0 == "changed"
-                    || upgrade_result.0 == "changed"
-                    || cleanup_result.0 == "changed";
+                // Combine results - consider both "changed" and "unchanged" as success
+                let success = (update_result.0 == "changed" || update_result.0 == "unchanged")
+                    && (upgrade_result.0 == "changed" || upgrade_result.0 == "unchanged")
+                    && (cleanup_result.0 == "changed" || cleanup_result.0 == "unchanged");
                 let output = format!("Homebrew update completed");
 
                 TaskResult {
@@ -87,7 +87,7 @@ async fn execute_tool_update(
                 let result = rustup_update(&runner, &run_tmp, verbose, &mut None)?;
                 TaskResult {
                     tool,
-                    success: result.0 == "changed",
+                    success: result.0 == "changed" || result.0 == "unchanged",
                     output: "Rustup update completed".to_string(),
                 }
             }
@@ -95,7 +95,7 @@ async fn execute_tool_update(
                 let result = mise_up(&runner, &run_tmp, verbose, &mut None)?;
                 TaskResult {
                     tool,
-                    success: result.0 == "changed",
+                    success: result.0 == "changed" || result.0 == "unchanged",
                     output: "Mise update completed".to_string(),
                 }
             }
@@ -300,10 +300,15 @@ async fn main() -> Result<()> {
             } else {
                 match execute_tool_update(tool.clone(), dry_run, verbose, keep_logs).await {
                     Ok(result) => result,
-                    Err(e) =>                     TaskResult {
-                        tool: tool.clone(),
-                        success: false,
-                        output: format!("{} failed: {}", tool.display_name(), e),
+                    Err(e) => {
+                        if verbose {
+                            eprintln!("Error executing {}: {}", tool.display_name(), e);
+                        }
+                        TaskResult {
+                            tool: tool.clone(),
+                            success: false,
+                            output: format!("{} failed: {}", tool.display_name(), e),
+                        }
                     },
                 }
             };
