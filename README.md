@@ -319,9 +319,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 - Development setup
 - Adding new package managers
 
-## 📜 License
-
-This project is licensed under both MIT License and Apache License 2.0.
 
 ## 🔗 Links
 
