@@ -20,8 +20,12 @@ pub enum ShellType {
 /// devtool - 开发工具统一更新管理器
 #[derive(Parser, Debug)]
 #[command(name = "devtool")]
-#[command(about = "A CLI tool for development in update rustup toolchain, mise maintained tools and homebrew packages.")]
-#[command(long_about = "devtool is a modern, efficient developer tool written in Rust that unifies the update process for your development environment tools and package managers with a single command.")]
+#[command(
+    about = "A CLI tool for updating rustup toolchain, mise maintained tools and homebrew packages."
+)]
+#[command(
+    long_about = "devtool is a modern, efficient developer tool written in Rust that unifies the update process for your development environment tools and package managers with a single command."
+)]
 pub struct Args {
     #[command(subcommand)]
     pub command: Option<Commands>,
