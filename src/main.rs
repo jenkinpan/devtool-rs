@@ -526,8 +526,15 @@ async fn main() -> Result<()> {
     for result in &results {
         if result.success {
             succ.push(result.tool.display_name().to_string());
-            if result.output.contains("updated") {
+            
+            // 检查是否有升级详情文件来判断是否有真正的升级
+            let has_upgrade_details = !read_upgrade_details(&_run_tmp, &result.tool).is_empty();
+            
+            if result.output.contains("updated") && has_upgrade_details {
                 updated.push(result.tool.display_name().to_string());
+            } else if result.output.contains("updated") && !has_upgrade_details {
+                // 有更新但没有升级详情，说明只是索引更新
+                unchanged.push(result.tool.display_name().to_string());
             } else if result.output.contains("already latest") {
                 unchanged.push(result.tool.display_name().to_string());
             } else {
