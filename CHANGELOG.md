@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.7] - 2025-10-17
+
+### Enhanced
+- **Comprehensive Version Tracking**: Implemented robust version tracking for all tools
+  - **Homebrew**: Enhanced with `brew outdated --json` pre-check and version comparison
+  - **Rustup**: Improved toolchain version tracking with JSON-based version recording
+  - **Mise**: Enhanced tool version tracking with structured version comparison
+  - All tools now use consistent version tracking methodology for accurate upgrade detection
+
+### Technical Details
+- **Homebrew Optimization**: Uses `brew outdated --json` to pre-check for outdated packages and compare versions
+- **Rustup Enhancement**: JSON-based toolchain version recording and comparison
+- **Mise Improvement**: Structured tool version tracking with JSON serialization
+- **Universal Approach**: All tools now use the same reliable version tracking pattern
+- **Better Accuracy**: Eliminates false positives and ensures only actual upgrades are reported
+
 ## [0.7.6] - 2025-10-17
 
 ### Enhanced
@@ -388,7 +404,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.6...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.7...HEAD
+[0.7.7]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.3...v0.7.4

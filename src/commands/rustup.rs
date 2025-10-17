@@ -2,11 +2,62 @@
 // 包含 rustup update 命令
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::runner::Runner;
+
+/// Rustup 工具链版本信息
+#[derive(Debug, Deserialize, Serialize)]
+struct ToolchainVersion {
+    name: String,
+    version: String,
+}
+
+/// 获取并保存工具链版本信息
+///
+/// 获取所有已安装工具链的版本信息并保存到临时文件
+fn get_toolchain_versions_json(
+    runner: &dyn Runner,
+    tmpdir: &Path,
+) -> Result<Vec<ToolchainVersion>> {
+    let mut versions = Vec::new();
+
+    // 获取所有已安装的工具链
+    let (_, toolchains_output) =
+        runner.run("rustup show", &tmpdir.join("rustup_show.log"), false)?;
+
+    // 解析工具链信息
+    for line in toolchains_output.lines() {
+        if line.contains("stable-") || line.contains("nightly-") || line.contains("beta-") {
+            // 提取工具链名称和版本
+            if let Some(toolchain) = line.split_whitespace().next() {
+                // 获取该工具链的 rustc 版本
+                let cmd = format!("rustup run {} rustc --version", toolchain);
+                if let Ok((_, version_output)) =
+                    runner.run(&cmd, &tmpdir.join("toolchain_version.log"), false)
+                {
+                    if let Some(version) = extract_rust_version(&version_output) {
+                        versions.push(ToolchainVersion {
+                            name: toolchain.to_string(),
+                            version,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // 保存到临时文件
+    let json_file = tmpdir.join("toolchain_versions.json");
+    if let Ok(mut file) = File::create(&json_file) {
+        let _ = writeln!(file, "{}", serde_json::to_string_pretty(&versions)?);
+    }
+
+    Ok(versions)
+}
 
 /// 提取 Rust 版本号
 ///
@@ -72,8 +123,8 @@ pub fn rustup_update(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("rustup_update.log");
 
-    // 获取更新前的所有工具链版本信息
-    let versions_before = get_toolchain_versions(runner, tmpdir).unwrap_or_default();
+    // 获取更新前的工具链版本信息
+    let versions_before = get_toolchain_versions_json(runner, tmpdir)?;
 
     // 执行更新 - 更新所有已安装的工具链
     let (rc, out) = runner.run("rustup update", &logfile, verbose)?;
@@ -82,36 +133,29 @@ pub fn rustup_update(
         return Ok(("failed".to_string(), rc, logfile));
     }
 
-    // 获取更新后的所有工具链版本信息
-    let versions_after = get_toolchain_versions(runner, tmpdir).unwrap_or_default();
+    // 获取更新后的工具链版本信息
+    let versions_after = get_toolchain_versions_json(runner, tmpdir)?;
 
-    // 检查是否有任何工具链版本发生变化
-    let mut has_changes = false;
+    // 比较版本变化，生成升级详情
     let mut upgrade_details = Vec::new();
 
-    for (toolchain, version_before) in &versions_before {
-        if let Some(version_after) = versions_after
-            .iter()
-            .find(|(tc, _)| tc == toolchain)
-            .map(|(_, version)| version)
-        {
-            if version_before != version_after {
-                has_changes = true;
+    for before_tc in &versions_before {
+        if let Some(after_tc) = versions_after.iter().find(|tc| tc.name == before_tc.name) {
+            if before_tc.version != after_tc.version {
                 upgrade_details.push(format!(
                     "{}: {} → {}",
-                    toolchain, version_before, version_after
+                    before_tc.name, before_tc.version, after_tc.version
                 ));
             }
         }
     }
 
     // 检查是否有新安装的工具链
-    for (toolchain, version_after) in &versions_after {
-        if !versions_before.iter().any(|(tc, _)| tc == toolchain) {
-            has_changes = true;
+    for after_tc in &versions_after {
+        if !versions_before.iter().any(|tc| tc.name == after_tc.name) {
             upgrade_details.push(format!(
                 "{}: new installation → {}",
-                toolchain, version_after
+                after_tc.name, after_tc.version
             ));
         }
     }
@@ -120,7 +164,7 @@ pub fn rustup_update(
     let out_text = out.to_lowercase();
     let is_unchanged = out_text.contains("unchanged")
         || out_text.contains("up to date")
-        || (!has_changes && upgrade_details.is_empty());
+        || upgrade_details.is_empty();
 
     // 保存升级详情（无论是否有变化，都尝试保存）
     if !upgrade_details.is_empty() {

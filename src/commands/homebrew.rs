@@ -2,109 +2,49 @@
 // 包含 brew update, brew upgrade, brew cleanup
 
 use anyhow::Result;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::runner::Runner;
 
-/// 分析 Homebrew 升级情况
-///
-/// 比较升级前后的版本信息，返回升级的软件包列表
-fn analyze_brew_upgrades(versions_before: &str, versions_after: &str) -> Vec<String> {
-    let mut before_map: HashMap<String, String> = HashMap::new();
-    let mut after_map: HashMap<String, String> = HashMap::new();
-
-    // 解析升级前的版本
-    for line in versions_before.lines() {
-        if let Some((name, version)) = parse_brew_version_line(line) {
-            before_map.insert(name, version);
-        }
-    }
-
-    // 解析升级后的版本
-    for line in versions_after.lines() {
-        if let Some((name, version)) = parse_brew_version_line(line) {
-            after_map.insert(name, version);
-        }
-    }
-
-    // 找出升级的软件包
-    let mut upgrades = Vec::new();
-    for (name, after_version) in &after_map {
-        if let Some(before_version) = before_map.get(name) {
-            if before_version != after_version {
-                upgrades.push(format!("{}: {} → {}", name, before_version, after_version));
-            }
-        }
-    }
-
-    upgrades.sort();
-    upgrades
+/// Homebrew 过时软件包信息
+#[derive(Debug, Deserialize, Serialize)]
+struct OutdatedPackage {
+    name: String,
+    installed_version: String,
+    current_version: String,
 }
 
-/// 解析 Homebrew 版本行
-///
-/// 从类似 "nginx 1.21.0" 的行中提取包名和版本号
-fn parse_brew_version_line(line: &str) -> Option<(String, String)> {
-    let mut parts = line.split_whitespace();
-    match (parts.next(), parts.next()) {
-        (Some(name), Some(version)) => Some((name.to_string(), version.to_string())),
-        _ => None,
-    }
+/// Homebrew 过时软件包 JSON 输出
+#[derive(Debug, Deserialize, Serialize)]
+struct OutdatedPackages {
+    formulae: Vec<OutdatedPackage>,
+    casks: Vec<OutdatedPackage>,
 }
 
-/// 解析 Homebrew 升级输出
+/// 获取并保存过时软件包信息
 ///
-/// 从 brew upgrade 的输出中提取升级信息
-fn parse_brew_upgrade_output(output: &str) -> Vec<String> {
-    let mut upgrades = Vec::new();
-    let lines: Vec<&str> = output.lines().collect();
+/// 使用 `brew outdated --json` 获取过时软件包信息并保存到临时文件
+fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<OutdatedPackage>> {
+    let logfile = tmpdir.join("brew_outdated.log");
+    let (_, out) = runner.run("brew outdated --json", &logfile, false)?;
 
-    for line in lines {
-        let line = line.trim();
-        // 匹配 "package old_version -> new_version" 格式
-        if line.contains(" -> ") {
-            if let Some(upgrade) = parse_upgrade_line(line) {
-                upgrades.push(upgrade);
-            }
-        }
+    let outdated: OutdatedPackages = serde_json::from_str(&out)?;
+
+    // 合并 formulae 和 casks
+    let mut all_outdated = Vec::new();
+    all_outdated.extend(outdated.formulae);
+    all_outdated.extend(outdated.casks);
+
+    // 保存到临时文件
+    let json_file = tmpdir.join("outdated_packages.json");
+    if let Ok(mut file) = File::create(&json_file) {
+        let _ = writeln!(file, "{}", serde_json::to_string_pretty(&all_outdated)?);
     }
 
-    upgrades
-}
-
-/// 解析升级行
-///
-/// 从类似 "nginx 1.21.0 -> 1.22.0" 或 "jenkinpan/tap/devtool 0.7.3 -> 0.7.4" 的行中提取升级信息
-fn parse_upgrade_line(line: &str) -> Option<String> {
-    if let Some(arrow_pos) = line.find(" -> ") {
-        let before_arrow = &line[..arrow_pos];
-        let after_arrow = &line[arrow_pos + 4..];
-
-        let parts: Vec<&str> = before_arrow.split_whitespace().collect();
-        if parts.len() >= 2 {
-            let package_name = parts[0];
-            let old_version = parts[1];
-            let new_version = after_arrow.split_whitespace().next().unwrap_or("");
-
-            if !new_version.is_empty() {
-                // 处理 tap 格式的包名，如 "jenkinpan/tap/devtool" -> "devtool"
-                let display_name = if package_name.contains('/') {
-                    package_name.split('/').last().unwrap_or(package_name)
-                } else {
-                    package_name
-                };
-
-                return Some(format!(
-                    "{}: {} → {}",
-                    display_name, old_version, new_version
-                ));
-            }
-        }
-    }
-    None
+    Ok(all_outdated)
 }
 
 /// Homebrew 更新索引
@@ -171,50 +111,35 @@ pub fn brew_upgrade(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_upgrade.log");
 
-    // 首先检查是否有过时的软件包
-    let (rc_outdated, out_outdated) = runner.run("brew outdated", &logfile, verbose)?;
-    if rc_outdated != 0 || out_outdated.trim().is_empty() {
-        return Ok(("unchanged".to_string(), rc_outdated, logfile));
-    }
-
-    // 检查输出是否包含过时软件包的信息
-    let has_outdated = !out_outdated.trim().is_empty()
-        && !out_outdated.contains("No outdated packages")
-        && !out_outdated.contains("No outdated formulae");
-
-    if !has_outdated {
+    // 获取升级前的过时软件包信息
+    let outdated_packages = get_outdated_packages(runner, tmpdir)?;
+    if outdated_packages.is_empty() {
         return Ok(("unchanged".to_string(), 0, logfile));
     }
 
-    // 记录升级前的版本信息
-    let (_, versions_before) = runner.run("brew list --formula --versions", &logfile, verbose)?;
-
     // 执行升级
-    let (rc_upgrade, out_upgrade) = runner.run("brew upgrade", &logfile, verbose)?;
+    let (rc_upgrade, _out_upgrade) = runner.run("brew upgrade", &logfile, verbose)?;
 
     if rc_upgrade != 0 {
         return Ok(("failed".to_string(), rc_upgrade, logfile));
     }
 
-    // 记录升级后的版本信息
-    let (_, versions_after) = runner.run("brew list --formula --versions", &logfile, verbose)?;
+    // 检查升级后的过时软件包信息
+    let updated_outdated = get_outdated_packages(runner, tmpdir)?;
 
-    // 分析升级的软件包
-    let upgrade_details = analyze_brew_upgrades(&versions_before, &versions_after);
+    // 比较升级前后的过时软件包，生成升级详情
+    let mut upgrade_details = Vec::new();
 
-    // 如果版本比较没有找到变化，但从输出中可以看到升级信息，则解析输出
-    if upgrade_details.is_empty()
-        && (out_upgrade.contains("==> Upgrading") || out_upgrade.contains("->"))
-    {
-        let parsed_upgrades = parse_brew_upgrade_output(&out_upgrade);
-        if !parsed_upgrades.is_empty() {
-            let details_file = tmpdir.join("brew_upgrade_details.txt");
-            if let Ok(mut file) = File::create(&details_file) {
-                for detail in &parsed_upgrades {
-                    let _ = writeln!(file, "{}", detail);
-                }
-            }
-            return Ok(("changed".to_string(), rc_upgrade, logfile));
+    for outdated in &outdated_packages {
+        // 检查这个软件包是否还在过时列表中
+        let still_outdated = updated_outdated.iter().any(|p| p.name == outdated.name);
+
+        if !still_outdated {
+            // 如果不再过时，说明已经升级了
+            upgrade_details.push(format!(
+                "{}: {} → {}",
+                outdated.name, outdated.installed_version, outdated.current_version
+            ));
         }
     }
 

@@ -2,13 +2,46 @@
 // 包含 mise up 命令
 
 use anyhow::Result;
-use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::runner::Runner;
+
+/// Mise 工具版本信息
+#[derive(Debug, Deserialize, Serialize)]
+struct MiseToolVersion {
+    name: String,
+    version: String,
+}
+
+/// 获取并保存 Mise 工具版本信息
+///
+/// 获取所有已安装工具的版本信息并保存到临时文件
+fn get_mise_versions_json(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<MiseToolVersion>> {
+    let (_, versions_output) = runner.run(
+        "mise ls --current",
+        &tmpdir.join("mise_versions.log"),
+        false,
+    )?;
+
+    let versions = parse_mise_versions(&versions_output);
+    let mut tool_versions = Vec::new();
+
+    for (name, version) in versions {
+        tool_versions.push(MiseToolVersion { name, version });
+    }
+
+    // 保存到临时文件
+    let json_file = tmpdir.join("mise_versions.json");
+    if let Ok(mut file) = File::create(&json_file) {
+        let _ = writeln!(file, "{}", serde_json::to_string_pretty(&tool_versions)?);
+    }
+
+    Ok(tool_versions)
+}
 
 /// 解析 Mise 版本信息
 ///
@@ -91,99 +124,72 @@ pub fn mise_up(
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("mise_up.log");
 
-    // 获取升级前的版本信息
-    let (_, versions_before) =
-        runner.run("mise ls --current", &tmpdir.join("mise_before.log"), false)?;
+    // 获取升级前的工具版本信息
+    let versions_before = get_mise_versions_json(runner, tmpdir)?;
 
     // 执行更新
     let (rc, out) = runner.run("mise up", &logfile, verbose)?;
+
+    // 获取升级后的工具版本信息
+    let versions_after = get_mise_versions_json(runner, tmpdir)?;
+
+    // 比较版本变化，生成升级详情
+    let mut upgrade_details = Vec::new();
+
+    for before_tool in &versions_before {
+        if let Some(after_tool) = versions_after
+            .iter()
+            .find(|tool| tool.name == before_tool.name)
+        {
+            if before_tool.version != after_tool.version {
+                upgrade_details.push(format!(
+                    "{}: {} → {}",
+                    before_tool.name, before_tool.version, after_tool.version
+                ));
+            }
+        }
+    }
+
+    // 检查是否有新安装的工具
+    for after_tool in &versions_after {
+        if !versions_before
+            .iter()
+            .any(|tool| tool.name == after_tool.name)
+        {
+            upgrade_details.push(format!(
+                "{}: new installation → {}",
+                after_tool.name, after_tool.version
+            ));
+        }
+    }
+
+    // 检查输出中是否包含更新标记
     let outl = out.to_lowercase();
-
-    // 获取升级后的版本信息
-    let (_, versions_after) =
-        runner.run("mise ls --current", &tmpdir.join("mise_after.log"), false)?;
-
-    // 检查是否有安装/更新标记或版本模式
     let install_markers = ["install", "installed", "upgraded", "updated", "->", "→"];
-    let version_pat = Regex::new(r"[a-zA-Z0-9_+\-.]+@[0-9]+(?:\.[0-9]+)+").unwrap();
-    let mut short_entries: HashMap<String, Vec<String>> = HashMap::new();
+    let has_updates =
+        install_markers.iter().any(|k| outl.contains(k)) || !upgrade_details.is_empty();
 
-    // 从输出中收集明确的 name@version 标记
-    for cap in version_pat.captures_iter(&out) {
-        if let Some(m) = cap.get(0) {
-            let s = m.as_str().to_string();
-            if let Some((name, ver)) = s.split_once('@') {
-                short_entries
-                    .entry(name.to_string())
-                    .or_default()
-                    .push(ver.to_string());
+    // 保存升级详情
+    if !upgrade_details.is_empty() {
+        let details_file = tmpdir.join("mise_short_updates.txt");
+        if let Ok(mut file) = File::create(&details_file) {
+            for detail in upgrade_details {
+                let _ = writeln!(file, "{}", detail);
             }
         }
     }
 
-    // 解析版本信息
-    let before_versions = parse_mise_versions(&versions_before);
-    let after_versions = parse_mise_versions(&versions_after);
-
-    // 如果检测到版本或安装标记，或者有版本变化，认为已更改并写入简洁摘要
-    let has_version_changes = !before_versions.is_empty()
-        && !after_versions.is_empty()
-        && before_versions != after_versions;
-
-    if install_markers.iter().any(|k| outl.contains(k))
-        || !short_entries.is_empty()
-        || has_version_changes
-    {
-        let mut concise: Vec<String> = Vec::new();
-
-        // 比较版本以找出升级
-        for (name, after_ver) in &after_versions {
-            if let Some(before_ver) = before_versions.get(name) {
-                if before_ver != after_ver {
-                    concise.push(format!("{}: {} → {}", name, before_ver, after_ver));
-                }
-            } else {
-                // 新安装
-                concise.push(format!("{}: {}", name, after_ver));
-            }
+    let state = if has_updates {
+        if rc == 0 {
+            "changed"
+        } else {
+            "failed"
         }
-
-        // 如果版本比较没有找到变化，但输出显示有更新，则从输出中提取信息
-        if concise.is_empty() && !short_entries.is_empty() {
-            for (name, vers) in &short_entries {
-                let mut seen: Vec<String> = Vec::new();
-                for v in vers {
-                    if !seen.contains(v) {
-                        seen.push(v.clone());
-                    }
-                }
-                if seen.len() >= 2 {
-                    concise.push(format!(
-                        "{}: {} → {}",
-                        name,
-                        seen.first().unwrap(),
-                        seen.last().unwrap()
-                    ));
-                } else if seen.len() == 1 {
-                    concise.push(format!("{}: {}", name, seen[0]));
-                }
-            }
-        }
-
-        if !concise.is_empty() {
-            let shortfile = tmpdir.join("mise_short_updates.txt");
-            let f = File::create(&shortfile).ok();
-            if let Some(mut fh) = f {
-                for entry in &concise {
-                    let _ = writeln!(fh, "{}", entry);
-                }
-            }
-        }
-        let state = if rc == 0 { "changed" } else { "failed" };
-        Ok((state.to_string(), rc, logfile))
     } else {
-        Ok(("unchanged".to_string(), rc, logfile))
-    }
+        "unchanged"
+    };
+
+    Ok((state.to_string(), rc, logfile))
 }
 
 #[cfg(test)]
