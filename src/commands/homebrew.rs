@@ -77,7 +77,7 @@ fn parse_brew_upgrade_output(output: &str) -> Vec<String> {
 
 /// 解析升级行
 ///
-/// 从类似 "nginx 1.21.0 -> 1.22.0" 的行中提取升级信息
+/// 从类似 "nginx 1.21.0 -> 1.22.0" 或 "jenkinpan/tap/devtool 0.7.3 -> 0.7.4" 的行中提取升级信息
 fn parse_upgrade_line(line: &str) -> Option<String> {
     if let Some(arrow_pos) = line.find(" -> ") {
         let before_arrow = &line[..arrow_pos];
@@ -90,9 +90,16 @@ fn parse_upgrade_line(line: &str) -> Option<String> {
             let new_version = after_arrow.split_whitespace().next().unwrap_or("");
 
             if !new_version.is_empty() {
+                // 处理 tap 格式的包名，如 "jenkinpan/tap/devtool" -> "devtool"
+                let display_name = if package_name.contains('/') {
+                    package_name.split('/').last().unwrap_or(package_name)
+                } else {
+                    package_name
+                };
+
                 return Some(format!(
                     "{}: {} → {}",
-                    package_name, old_version, new_version
+                    display_name, old_version, new_version
                 ));
             }
         }
@@ -196,7 +203,9 @@ pub fn brew_upgrade(
     let upgrade_details = analyze_brew_upgrades(&versions_before, &versions_after);
 
     // 如果版本比较没有找到变化，但从输出中可以看到升级信息，则解析输出
-    if upgrade_details.is_empty() && out_upgrade.contains("==> Upgrading") {
+    if upgrade_details.is_empty()
+        && (out_upgrade.contains("==> Upgrading") || out_upgrade.contains("->"))
+    {
         let parsed_upgrades = parse_brew_upgrade_output(&out_upgrade);
         if !parsed_upgrades.is_empty() {
             let details_file = tmpdir.join("brew_upgrade_details.txt");

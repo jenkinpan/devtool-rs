@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5] - 2025-10-17
+
+### Fixed
+- **Upgrade Details Display**: Enhanced upgrade detail collection and display functionality
+  - Improved upgrade detail detection logic to support both "updated" and "changed" status
+  - Enhanced output parsing to detect upgrade patterns with "->" symbols
+  - Optimized `parse_upgrade_line` function to handle tap format package names (e.g., "jenkinpan/tap/devtool")
+  - Fixed upgrade detail collection for both parallel and sequential execution modes
+  - Now correctly displays specific version changes in format: `package: old_version → new_version`
+
+### Technical Details
+- **Upgrade Detection**: Extended detection conditions for upgrade status
+- **Output Parsing**: Improved parsing of brew upgrade output with arrow symbols
+- **Package Name Handling**: Better support for tap format package names
+- **Display Format**: Consistent upgrade detail display format
+
 ## [0.7.4] - 2025-10-17
 
 ### Fixed
@@ -356,7 +372,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.4...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.5...HEAD
+[0.7.5]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.1...v0.7.2
