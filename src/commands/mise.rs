@@ -121,11 +121,19 @@ pub fn mise_up(
         }
     }
 
-    // 如果检测到版本或安装标记，认为已更改并写入简洁摘要
-    if install_markers.iter().any(|k| outl.contains(k)) || !short_entries.is_empty() {
-        let before_versions = parse_mise_versions(&versions_before);
-        let after_versions = parse_mise_versions(&versions_after);
+    // 解析版本信息
+    let before_versions = parse_mise_versions(&versions_before);
+    let after_versions = parse_mise_versions(&versions_after);
 
+    // 如果检测到版本或安装标记，或者有版本变化，认为已更改并写入简洁摘要
+    let has_version_changes = !before_versions.is_empty()
+        && !after_versions.is_empty()
+        && before_versions != after_versions;
+
+    if install_markers.iter().any(|k| outl.contains(k))
+        || !short_entries.is_empty()
+        || has_version_changes
+    {
         let mut concise: Vec<String> = Vec::new();
 
         // 比较版本以找出升级

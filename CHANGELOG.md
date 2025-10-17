@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.6] - 2025-10-17
+
+### Enhanced
+- **Upgrade Details Display**: Comprehensive upgrade detail collection and display for all tools
+  - Enhanced upgrade detail detection logic to work with all tools (Homebrew, Rustup, Mise)
+  - Improved upgrade detail collection for both parallel and sequential execution modes
+  - Optimized Rustup upgrade detail collection with better version change detection
+  - Enhanced Mise upgrade detail collection with improved version comparison logic
+  - Now correctly displays specific version changes for all tools in unified format
+
+### Technical Details
+- **Universal Upgrade Detection**: Removed dependency on specific keywords, now relies on upgrade detail file existence
+- **Rustup Optimization**: Improved toolchain version change detection and upgrade detail saving
+- **Mise Enhancement**: Better version change detection and output parsing
+- **Display Consistency**: Unified upgrade detail display format across all tools
+
 ## [0.7.5] - 2025-10-17
 
 ### Fixed
@@ -372,7 +388,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.5...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.6...HEAD
+[0.7.6]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.2...v0.7.3

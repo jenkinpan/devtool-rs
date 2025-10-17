@@ -409,9 +409,8 @@ async fn main() -> Result<()> {
 
         // 收集升级详情
         for result in &results {
-            if result.success
-                && (result.output.contains("updated") || result.output.contains("changed"))
-            {
+            if result.success {
+                // 检查是否有升级详情文件存在
                 let details = read_upgrade_details(&_run_tmp, &result.tool);
                 if !details.is_empty() {
                     let key = match result.tool {
@@ -496,9 +495,7 @@ async fn main() -> Result<()> {
             }
 
             // 收集升级详情
-            if result.success
-                && (result.output.contains("updated") || result.output.contains("changed"))
-            {
+            if result.success {
                 let details = read_upgrade_details(&_run_tmp, tool);
                 if !details.is_empty() {
                     let key = match tool {

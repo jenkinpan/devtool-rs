@@ -122,20 +122,17 @@ pub fn rustup_update(
         || out_text.contains("up to date")
         || (!has_changes && upgrade_details.is_empty());
 
-    let state = if is_unchanged {
-        "unchanged"
-    } else {
-        // 保存升级详情
-        if !upgrade_details.is_empty() {
-            let details_file = tmpdir.join("rustup_upgrade_details.txt");
-            if let Ok(mut file) = File::create(&details_file) {
-                for detail in upgrade_details {
-                    let _ = writeln!(file, "{}", detail);
-                }
+    // 保存升级详情（无论是否有变化，都尝试保存）
+    if !upgrade_details.is_empty() {
+        let details_file = tmpdir.join("rustup_upgrade_details.txt");
+        if let Ok(mut file) = File::create(&details_file) {
+            for detail in upgrade_details {
+                let _ = writeln!(file, "{}", detail);
             }
         }
-        "changed"
-    };
+    }
+
+    let state = if is_unchanged { "unchanged" } else { "changed" };
 
     Ok((state.to_string(), rc, logfile))
 }
