@@ -71,35 +71,6 @@ fn extract_rust_version(version_output: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-/// 获取所有已安装工具链的版本信息
-fn get_toolchain_versions(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<(String, String)>> {
-    let mut versions = Vec::new();
-
-    // 获取所有已安装的工具链
-    let (_, toolchains_output) =
-        runner.run("rustup show", &tmpdir.join("rustup_show.log"), false)?;
-
-    // 解析工具链信息
-    for line in toolchains_output.lines() {
-        if line.contains("stable-") || line.contains("nightly-") || line.contains("beta-") {
-            // 提取工具链名称和版本
-            if let Some(toolchain) = line.split_whitespace().next() {
-                // 获取该工具链的 rustc 版本
-                let cmd = format!("rustup run {} rustc --version", toolchain);
-                if let Ok((_, version_output)) =
-                    runner.run(&cmd, &tmpdir.join("toolchain_version.log"), false)
-                {
-                    if let Some(version) = extract_rust_version(&version_output) {
-                        versions.push((toolchain.to_string(), version));
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(versions)
-}
-
 /// Rustup 更新所有工具链
 ///
 /// 执行 `rustup update` 更新所有已安装的 Rust 工具链
