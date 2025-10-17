@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2025-10-17
+
+### Fixed
+- **Progress Bar Display**: Fixed progress bar duplication and display conflicts
+  - Reduced refresh frequency from 1000ms to 2000ms to prevent display conflicts
+  - Increased completion delay from 200ms to 500ms to ensure proper state updates
+  - Improved progress bar stability during long-running operations
+- **Upgrade Information Display**: Enhanced upgrade detail collection and display
+  - Added `read_upgrade_details()` function to collect specific package version changes
+  - Implemented upgrade detail collection for both parallel and sequential execution modes
+  - Enhanced upgrade information display with specific version changes (e.g., `nginx: 1.21.0 → 1.22.0`)
+  - Improved user experience with detailed upgrade feedback
+
+### Technical Details
+- **Progress Bar Optimization**: Better refresh mechanism to prevent display conflicts
+- **Version Information Collection**: Enhanced upgrade detail collection for Homebrew, Rustup, and Mise
+- **Display Improvements**: More stable progress indication and detailed upgrade reporting
+
 ## [0.7.2] - 2025-10-16
 
 ### Added
@@ -320,7 +338,9 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.2...v0.7.3
+[0.7.2]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/jenkinpan/devtool-rs/compare/v0.6.0...v0.6.1

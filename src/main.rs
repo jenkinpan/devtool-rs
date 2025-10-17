@@ -37,6 +37,21 @@ fn get_tool_description(tool: &Tool) -> String {
     }
 }
 
+/// 读取升级详情文件
+fn read_upgrade_details(tmpdir: &std::path::Path, tool: &Tool) -> Vec<String> {
+    let details_file = match tool {
+        Tool::Homebrew => tmpdir.join("brew_upgrade_details.txt"),
+        Tool::Rustup => tmpdir.join("rustup_upgrade_details.txt"),
+        Tool::Mise => tmpdir.join("mise_short_updates.txt"),
+    };
+
+    if let Ok(content) = std::fs::read_to_string(&details_file) {
+        content.lines().map(|s| s.to_string()).collect()
+    } else {
+        Vec::new()
+    }
+}
+
 /// Execute tool updates in parallel
 async fn execute_parallel_updates(
     tools: Vec<Tool>,
@@ -56,17 +71,17 @@ async fn execute_parallel_updates(
     for tool in &tools {
         let pb = multi_progress.add(ProgressBar::new(100));
 
-        // 设置进度条样式
+        // 设置进度条样式 - 使用更简洁的样式减少显示冲突
         pb.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:25.cyan/blue}] {pos}% {msg}")
+                .template("{spinner:.green} [{elapsed_precise}] [{bar:20.cyan/blue}] {pos}% {msg}")
                 .unwrap()
                 .progress_chars("#>-"),
         );
 
         pb.set_message(format!("{} 准备中...", tool.display_name()));
-        // 启用自动刷新以显示实时时间
-        pb.enable_steady_tick(std::time::Duration::from_millis(100));
+        // 减少刷新频率，避免显示冲突
+        pb.enable_steady_tick(std::time::Duration::from_millis(2000));
         progress_bars.push((tool.clone(), pb));
     }
 
@@ -105,6 +120,8 @@ async fn execute_parallel_updates(
                         pb.set_message(format!("❌ {} 错误", tool_clone.display_name()));
                     }
                 }
+                // 添加延迟确保状态更新完成，避免显示冲突
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 pb.finish();
 
                 result
@@ -369,7 +386,7 @@ async fn main() -> Result<()> {
 
     // 执行工具更新
     let mut results: Vec<TaskResult> = Vec::new();
-    let short_updates: std::collections::HashMap<String, Vec<String>> =
+    let mut short_updates: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
 
     // 确定执行模式：如果指定了 sequential，则顺序执行；否则并行执行
@@ -389,6 +406,21 @@ async fn main() -> Result<()> {
             &localized,
         )
         .await?;
+
+        // 收集升级详情
+        for result in &results {
+            if result.success && result.output.contains("updated") {
+                let details = read_upgrade_details(&_run_tmp, &result.tool);
+                if !details.is_empty() {
+                    let key = match result.tool {
+                        Tool::Homebrew => "Homebrew：升级软件包".to_string(),
+                        Tool::Rustup => "Rust：更新工具链".to_string(),
+                        Tool::Mise => "Mise：更新托管工具".to_string(),
+                    };
+                    short_updates.insert(key, details);
+                }
+            }
+        }
     } else {
         // 顺序执行 - 使用 indicatif 进度条
         if verbose {
@@ -401,19 +433,19 @@ async fn main() -> Result<()> {
         for tool in &available_tools {
             let pb = multi_progress.add(ProgressBar::new(100));
 
-            // 设置进度条样式
+            // 设置进度条样式 - 使用更简洁的样式减少显示冲突
             pb.set_style(
                 ProgressStyle::default_bar()
                     .template(
-                        "{spinner:.green} [{elapsed_precise}] [{bar:25.cyan/blue}] {pos}% {msg}",
+                        "{spinner:.green} [{elapsed_precise}] [{bar:20.cyan/blue}] {pos}% {msg}",
                     )
                     .unwrap()
                     .progress_chars("#>-"),
             );
 
             pb.set_message(format!("{} 准备中...", tool.display_name()));
-            // 启用自动刷新以显示实时时间
-            pb.enable_steady_tick(std::time::Duration::from_millis(100));
+            // 减少刷新频率，避免显示冲突
+            pb.enable_steady_tick(std::time::Duration::from_millis(2000));
             progress_bars.push((tool.clone(), pb));
         }
 
@@ -456,7 +488,22 @@ async fn main() -> Result<()> {
                 } else {
                     pb.set_message(format!("❌ {} 失败", tool.display_name()));
                 }
+                // 添加延迟确保状态更新完成，避免显示冲突
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 pb.finish();
+            }
+
+            // 收集升级详情
+            if result.success && result.output.contains("updated") {
+                let details = read_upgrade_details(&_run_tmp, tool);
+                if !details.is_empty() {
+                    let key = match tool {
+                        Tool::Homebrew => "Homebrew：升级软件包".to_string(),
+                        Tool::Rustup => "Rust：更新工具链".to_string(),
+                        Tool::Mise => "Mise：更新托管工具".to_string(),
+                    };
+                    short_updates.insert(key, details);
+                }
             }
 
             results.push(result);
@@ -580,7 +627,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    if let Some(vals) = short_updates.get("Rust：更新 stable 工具链") {
+    if let Some(vals) = short_updates.get("Rust：更新工具链") {
         if !vals.is_empty() {
             if ui::colors::supports_color() && !no_color {
                 print_info("🦀 Rust 升级详情：");
