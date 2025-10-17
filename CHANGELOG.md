@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.72] - 2025-10-17
+
+### Fixed
+- **升级详情显示逻辑修复**: 修复了升级详情不显示的问题
+- **状态判断优化**: 根据升级详情文件判断是否有真正的升级
+- **显示逻辑改进**: 区分索引更新和软件包升级，避免显示"已更新"但没有详情的情况
+
+### Technical Details
+- **精确判断逻辑**: 只有存在升级详情文件时才显示为"已更新"
+- **状态区分**: 索引更新显示为"已是最新"，软件包升级显示为"已更新"
+- **用户体验优化**: 避免了"显示更新但没有详情"的困惑
+
 ## [0.7.71] - 2025-10-17
 
 ### Fixed
@@ -416,7 +428,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.71...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.72...HEAD
+[0.7.72]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.71...v0.7.72
 [0.7.71]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.7...v0.7.71
 [0.7.7]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.5...v0.7.6
