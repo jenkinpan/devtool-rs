@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.71] - 2025-10-17
+
+### Fixed
+- **Homebrew JSON 解析修复**: 修复了 `brew outdated --json` 输出格式不匹配的问题
+- **版本跟踪系统优化**: 改进了 Homebrew 版本对比逻辑，确保准确的升级检测
+- **JSON 结构体更新**: 更新了 `OutdatedPackage` 结构体以匹配实际的 Homebrew JSON 输出格式
+
+### Technical Details
+- **JSON 格式兼容**: 修复了 `installed_versions` 字段的解析问题
+- **版本对比优化**: 改进了升级前后的版本对比逻辑
+- **错误处理增强**: 更好的 JSON 解析错误处理
+
 ## [0.7.7] - 2025-10-17
 
 ### Enhanced
@@ -404,7 +416,8 @@ No action is required from users upgrading from 0.3.5 to 0.4.0.
 
 ---
 
-[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.7...HEAD
+[Unreleased]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.71...HEAD
+[0.7.71]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.7...v0.7.71
 [0.7.7]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.6...v0.7.7
 [0.7.6]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/jenkinpan/devtool-rs/compare/v0.7.4...v0.7.5

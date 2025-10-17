@@ -13,8 +13,10 @@ use crate::runner::Runner;
 #[derive(Debug, Deserialize, Serialize)]
 struct OutdatedPackage {
     name: String,
-    installed_version: String,
+    installed_versions: Vec<String>,
     current_version: String,
+    pinned: bool,
+    pinned_version: Option<String>,
 }
 
 /// Homebrew 过时软件包 JSON 输出
@@ -24,19 +26,45 @@ struct OutdatedPackages {
     casks: Vec<OutdatedPackage>,
 }
 
+/// 简化的过时软件包信息（用于升级详情）
+#[derive(Debug, Deserialize, Serialize)]
+struct SimpleOutdatedPackage {
+    name: String,
+    installed_version: String,
+    current_version: String,
+}
+
 /// 获取并保存过时软件包信息
 ///
 /// 使用 `brew outdated --json` 获取过时软件包信息并保存到临时文件
-fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<OutdatedPackage>> {
+fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<SimpleOutdatedPackage>> {
     let logfile = tmpdir.join("brew_outdated.log");
     let (_, out) = runner.run("brew outdated --json", &logfile, false)?;
 
     let outdated: OutdatedPackages = serde_json::from_str(&out)?;
 
-    // 合并 formulae 和 casks
+    // 转换格式并合并 formulae 和 casks
     let mut all_outdated = Vec::new();
-    all_outdated.extend(outdated.formulae);
-    all_outdated.extend(outdated.casks);
+
+    for package in outdated.formulae {
+        if let Some(installed_version) = package.installed_versions.first() {
+            all_outdated.push(SimpleOutdatedPackage {
+                name: package.name,
+                installed_version: installed_version.clone(),
+                current_version: package.current_version,
+            });
+        }
+    }
+
+    for package in outdated.casks {
+        if let Some(installed_version) = package.installed_versions.first() {
+            all_outdated.push(SimpleOutdatedPackage {
+                name: package.name,
+                installed_version: installed_version.clone(),
+                current_version: package.current_version,
+            });
+        }
+    }
 
     // 保存到临时文件
     let json_file = tmpdir.join("outdated_packages.json");
