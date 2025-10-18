@@ -51,7 +51,7 @@ fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<Simpl
         }
         Err(e) => {
             // 记录错误但不立即失败，尝试备用方法
-            if let Ok(mut file) = File::create(&tmpdir.join("brew_errors.log")) {
+            if let Ok(mut file) = File::create(tmpdir.join("brew_errors.log")) {
                 let _ = writeln!(file, "JSON method failed: {}", e);
             }
         }
@@ -62,7 +62,7 @@ fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<Simpl
         Ok(packages) => Ok(packages),
         Err(e) => {
             // 如果所有方法都失败，返回空列表而不是错误
-            if let Ok(mut file) = File::create(&tmpdir.join("brew_errors.log")) {
+            if let Ok(mut file) = File::create(tmpdir.join("brew_errors.log")) {
                 let _ = writeln!(file, "All methods failed: {}", e);
             }
             Ok(Vec::new())
@@ -77,6 +77,12 @@ fn get_outdated_packages_json(
     logfile: &Path,
 ) -> Result<Vec<SimpleOutdatedPackage>> {
     let (_, out) = runner.run("brew outdated --json", logfile, false)?;
+
+    // 添加调试信息
+    if let Ok(mut file) = File::create(tmpdir.join("brew_debug.log")) {
+        let _ = writeln!(file, "Debug: brew outdated --json 输出:");
+        let _ = writeln!(file, "{}", out);
+    }
 
     let outdated: OutdatedPackages = serde_json::from_str(&out)?;
 
@@ -115,7 +121,7 @@ fn get_outdated_packages_json(
 /// 使用文本格式获取过时软件包信息（备用方法）
 fn get_outdated_packages_text(
     runner: &dyn Runner,
-    tmpdir: &Path,
+    _tmpdir: &Path,
     logfile: &Path,
 ) -> Result<Vec<SimpleOutdatedPackage>> {
     let (_, out) = runner.run("brew outdated", logfile, false)?;
@@ -199,6 +205,22 @@ pub fn brew_upgrade(
 
     // 获取升级前的过时软件包信息
     let outdated_packages = get_outdated_packages(runner, tmpdir)?;
+
+    // 添加调试信息
+    if let Ok(mut file) = File::create(tmpdir.join("brew_upgrade_debug.log")) {
+        let _ = writeln!(
+            file,
+            "Debug: 升级前过时软件包数量: {}",
+            outdated_packages.len()
+        );
+        for pkg in &outdated_packages {
+            let _ = writeln!(
+                file,
+                "  - {}: {} -> {}",
+                pkg.name, pkg.installed_version, pkg.current_version
+            );
+        }
+    }
 
     // 如果没有过时软件包，直接返回
     if outdated_packages.is_empty() {

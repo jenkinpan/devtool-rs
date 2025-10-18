@@ -2,7 +2,7 @@
 
 This document outlines the planned features and improvements for devtool-rs. The roadmap is subject to change based on community feedback and priorities.
 
-## Current Version: 0.7.0
+## Current Version: 0.8.0
 
 ### Completed ✅
 
@@ -41,6 +41,13 @@ This document outlines the planned features and improvements for devtool-rs. The
   - Cleaned up unused code and modules
   - Improved error handling and reporting
   - Enhanced rustup support for all toolchains (stable, nightly, beta)
+- **User Feedback System** (v0.8.0)
+  - Built-in feedback collection with `devtool feedback` command
+  - Interactive feedback collection with multiple feedback types
+  - Automatic system information collection
+  - Structured feedback report generation
+  - GitHub Issues templates for bug reports and feature requests
+  - Feedback analysis tools for continuous improvement
 
 ---
 

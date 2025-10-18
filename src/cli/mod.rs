@@ -17,6 +17,23 @@ pub enum ShellType {
     Nushell,
 }
 
+/// 反馈类型
+#[derive(Clone, Debug, PartialEq, ValueEnum)]
+pub enum FeedbackType {
+    /// Bug 报告
+    Bug,
+    /// 功能请求
+    Feature,
+    /// 用户体验问题
+    Ux,
+    /// 性能问题
+    Performance,
+    /// 文档问题
+    Documentation,
+    /// 其他
+    Other,
+}
+
 /// devtool - 开发工具统一更新管理器
 #[derive(Parser, Debug)]
 #[command(name = "devtool")]
@@ -80,6 +97,20 @@ pub enum Commands {
     },
     /// 显示进度状态
     ProgressStatus,
+    /// 收集用户反馈
+    Feedback {
+        /// 反馈类型
+        #[arg(short = 't', long = "type", value_enum)]
+        feedback_type: Option<FeedbackType>,
+
+        /// 反馈内容
+        #[arg(short = 'm', long = "message")]
+        message: Option<String>,
+
+        /// 详细模式
+        #[arg(short = 'v', long = "verbose")]
+        verbose: bool,
+    },
 }
 
 #[cfg(test)]

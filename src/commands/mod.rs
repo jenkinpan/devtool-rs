@@ -10,4 +10,4 @@ pub mod upgrade_details;
 pub use homebrew::{brew_cleanup, brew_update, brew_upgrade};
 pub use mise::mise_up;
 pub use rustup::rustup_update;
-pub use upgrade_details::{UpgradeDetail, UpgradeDetails, UpgradeDetailsManager};
+// upgrade_details 模块的公共 API 由各个工具模块直接导入使用

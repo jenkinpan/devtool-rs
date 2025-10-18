@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// 升级详情条目
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +66,7 @@ impl UpgradeDetail {
     }
 
     /// 创建降级详情
+    #[allow(dead_code)]
     pub fn downgrade(name: String, old_version: String, new_version: String) -> Self {
         Self {
             name,
@@ -76,6 +77,7 @@ impl UpgradeDetail {
     }
 
     /// 格式化为显示字符串
+    #[allow(dead_code)]
     pub fn to_display_string(&self) -> String {
         match self.upgrade_type {
             UpgradeType::VersionUpgrade => {
@@ -121,6 +123,7 @@ impl UpgradeDetails {
     }
 
     /// 添加升级详情
+    #[allow(dead_code)]
     pub fn add_detail(&mut self, detail: UpgradeDetail) {
         self.details.push(detail);
         self.total_count = self.details.len();
@@ -138,11 +141,13 @@ impl UpgradeDetails {
     }
 
     /// 获取升级数量
+    #[allow(dead_code)]
     pub fn upgrade_count(&self) -> usize {
         self.details.len()
     }
 
     /// 获取新安装数量
+    #[allow(dead_code)]
     pub fn new_installation_count(&self) -> usize {
         self.details
             .iter()
@@ -151,6 +156,7 @@ impl UpgradeDetails {
     }
 
     /// 获取版本升级数量
+    #[allow(dead_code)]
     pub fn version_upgrade_count(&self) -> usize {
         self.details
             .iter()
@@ -159,6 +165,7 @@ impl UpgradeDetails {
     }
 
     /// 获取降级数量
+    #[allow(dead_code)]
     pub fn downgrade_count(&self) -> usize {
         self.details
             .iter()
@@ -167,11 +174,13 @@ impl UpgradeDetails {
     }
 
     /// 格式化为显示字符串列表
+    #[allow(dead_code)]
     pub fn to_display_strings(&self) -> Vec<String> {
         self.details.iter().map(|d| d.to_display_string()).collect()
     }
 
     /// 格式化为传统字符串列表（兼容现有格式）
+    #[allow(dead_code)]
     pub fn to_legacy_strings(&self) -> Vec<String> {
         self.details.iter().map(|d| d.to_legacy_string()).collect()
     }
@@ -243,6 +252,7 @@ pub struct UpgradeDetailsManager;
 
 impl UpgradeDetailsManager {
     /// 为 Homebrew 创建升级详情
+    #[allow(dead_code)]
     pub fn create_homebrew_details(
         tool_name: String,
         details: Vec<UpgradeDetail>,
@@ -253,6 +263,7 @@ impl UpgradeDetailsManager {
     }
 
     /// 为 Rustup 创建升级详情
+    #[allow(dead_code)]
     pub fn create_rustup_details(tool_name: String, details: Vec<UpgradeDetail>) -> UpgradeDetails {
         let mut upgrade_details = UpgradeDetails::new(tool_name);
         upgrade_details.add_details(details);
@@ -260,6 +271,7 @@ impl UpgradeDetailsManager {
     }
 
     /// 为 Mise 创建升级详情
+    #[allow(dead_code)]
     pub fn create_mise_details(tool_name: String, details: Vec<UpgradeDetail>) -> UpgradeDetails {
         let mut upgrade_details = UpgradeDetails::new(tool_name);
         upgrade_details.add_details(details);
@@ -284,6 +296,7 @@ impl UpgradeDetailsManager {
     }
 
     /// 从标准文件加载升级详情
+    #[allow(dead_code)]
     pub fn load_upgrade_details(tmpdir: &Path, tool_name: &str) -> Result<Option<UpgradeDetails>> {
         let json_file = tmpdir.join(format!("{}_upgrade_details.json", tool_name));
 

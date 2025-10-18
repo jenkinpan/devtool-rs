@@ -34,7 +34,7 @@ fn get_toolchain_versions_json(
         }
         Err(e) => {
             // 记录错误但不立即失败，尝试备用方法
-            if let Ok(mut file) = File::create(&tmpdir.join("rustup_errors.log")) {
+            if let Ok(mut file) = File::create(tmpdir.join("rustup_errors.log")) {
                 let _ = writeln!(file, "rustup show method failed: {}", e);
             }
         }
@@ -45,7 +45,7 @@ fn get_toolchain_versions_json(
         Ok(versions) => Ok(versions),
         Err(e) => {
             // 如果所有方法都失败，返回空列表而不是错误
-            if let Ok(mut file) = File::create(&tmpdir.join("rustup_errors.log")) {
+            if let Ok(mut file) = File::create(tmpdir.join("rustup_errors.log")) {
                 let _ = writeln!(file, "All methods failed: {}", e);
             }
             Ok(Vec::new())
@@ -93,7 +93,7 @@ fn get_toolchain_versions_from_show(
                         }
                         Err(e) => {
                             // 记录单个工具链的错误，但继续处理其他工具链
-                            if let Ok(mut file) = File::create(&tmpdir.join("rustup_errors.log")) {
+                            if let Ok(mut file) = File::create(tmpdir.join("rustup_errors.log")) {
                                 let _ = writeln!(
                                     file,
                                     "Failed to get version for {}: {}",
@@ -158,7 +158,7 @@ fn get_toolchain_versions_from_list(
                     }
                     Err(e) => {
                         // 记录单个工具链的错误，但继续处理其他工具链
-                        if let Ok(mut file) = File::create(&tmpdir.join("rustup_errors.log")) {
+                        if let Ok(mut file) = File::create(tmpdir.join("rustup_errors.log")) {
                             let _ =
                                 writeln!(file, "Failed to get version for {}: {}", toolchain, e);
                         }

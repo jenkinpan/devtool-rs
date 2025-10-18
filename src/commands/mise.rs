@@ -32,7 +32,7 @@ fn get_mise_versions_json(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<Mise
         }
         Err(e) => {
             // 记录错误但不立即失败，尝试备用方法
-            if let Ok(mut file) = File::create(&tmpdir.join("mise_errors.log")) {
+            if let Ok(mut file) = File::create(tmpdir.join("mise_errors.log")) {
                 let _ = writeln!(file, "mise ls --current method failed: {}", e);
             }
         }
@@ -43,7 +43,7 @@ fn get_mise_versions_json(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<Mise
         Ok(versions) => Ok(versions),
         Err(e) => {
             // 如果所有方法都失败，返回空列表而不是错误
-            if let Ok(mut file) = File::create(&tmpdir.join("mise_errors.log")) {
+            if let Ok(mut file) = File::create(tmpdir.join("mise_errors.log")) {
                 let _ = writeln!(file, "All methods failed: {}", e);
             }
             Ok(Vec::new())

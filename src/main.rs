@@ -20,7 +20,7 @@ mod ui;
 mod utils;
 
 // 导入需要使用的项
-use cli::{Args, Commands, ShellType};
+use cli::{Args, Commands, FeedbackType, ShellType};
 use commands::{brew_cleanup, brew_update, brew_upgrade, mise_up, rustup_update};
 use i18n::LocalizedStrings;
 use parallel::{ParallelScheduler, TaskResult, Tool};
@@ -260,6 +260,16 @@ async fn main() -> Result<()> {
     // 处理 progress-status 子命令
     if let Some(Commands::ProgressStatus) = &args.command {
         return progress_status_cmd();
+    }
+
+    // 处理 feedback 子命令
+    if let Some(Commands::Feedback {
+        feedback_type,
+        message,
+        verbose,
+    }) = &args.command
+    {
+        return handle_feedback_command(feedback_type, message, *verbose);
     }
 
     // 获取 update 命令的参数，如果没有指定命令则使用默认值
@@ -682,4 +692,183 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// 处理反馈命令
+fn handle_feedback_command(
+    feedback_type: &Option<FeedbackType>,
+    message: &Option<String>,
+    verbose: bool,
+) -> Result<()> {
+    use std::io::{self, Write};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    // 显示反馈收集界面
+    if ui::colors::supports_color() {
+        print_info("📝 devtool User Feedback Collection");
+    } else {
+        println!("📝 devtool User Feedback Collection");
+    }
+
+    // 收集系统信息
+    let system_info = collect_system_info();
+
+    // 获取反馈类型
+    let feedback_type = match feedback_type {
+        Some(ft) => ft.clone(),
+        None => {
+            println!("\nPlease select feedback type:");
+            println!("1. Bug Report");
+            println!("2. Feature Request");
+            println!("3. User Experience Issue");
+            println!("4. Performance Issue");
+            println!("5. Documentation Issue");
+            println!("6. Other");
+            print!("Please enter your choice (1-6): ");
+            io::stdout().flush()?;
+
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+
+            match input.trim() {
+                "1" => FeedbackType::Bug,
+                "2" => FeedbackType::Feature,
+                "3" => FeedbackType::Ux,
+                "4" => FeedbackType::Performance,
+                "5" => FeedbackType::Documentation,
+                "6" => FeedbackType::Other,
+                _ => FeedbackType::Other,
+            }
+        }
+    };
+
+    // 获取反馈内容
+    let feedback_message = match message {
+        Some(msg) => msg.clone(),
+        None => {
+            println!("\nPlease describe your feedback:");
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+            input.trim().to_string()
+        }
+    };
+
+    if feedback_message.is_empty() {
+        println!("Feedback content cannot be empty!");
+        return Ok(());
+    }
+
+    // 生成反馈报告
+    let feedback_report =
+        generate_feedback_report(&feedback_type, &feedback_message, &system_info, verbose);
+
+    // 保存反馈到文件
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let filename = format!("devtool_feedback_{}.md", timestamp);
+    let feedback_dir = dirs::home_dir().unwrap().join(".cache").join("devtool");
+    std::fs::create_dir_all(&feedback_dir)?;
+
+    let feedback_file = feedback_dir.join(&filename);
+    std::fs::write(&feedback_file, &feedback_report)?;
+
+    // 显示反馈信息
+    if ui::colors::supports_color() {
+        print_success(&format!(
+            "✅ Feedback saved to: {}",
+            feedback_file.display()
+        ));
+    } else {
+        println!("✅ Feedback saved to: {}", feedback_file.display());
+    }
+
+    println!("\n📋 Feedback Summary:");
+    println!("Type: {:?}", feedback_type);
+    println!("Content: {}", feedback_message);
+
+    if verbose {
+        println!("\n🔧 System Information:");
+        println!("{}", system_info);
+    }
+
+    println!("\n💡 You can also submit feedback through:");
+    println!("- GitHub Issues: https://github.com/jenkinpan/devtool-rs/issues");
+    println!("- GitHub Discussions: https://github.com/jenkinpan/devtool-rs/discussions");
+
+    Ok(())
+}
+
+/// 收集系统信息
+fn collect_system_info() -> String {
+    let mut info = String::new();
+
+    // 操作系统信息
+    if let Ok(os) = std::env::var("OS") {
+        info.push_str(&format!("操作系统: {}\n", os));
+    } else if cfg!(target_os = "macos") {
+        info.push_str("操作系统: macOS\n");
+    } else if cfg!(target_os = "linux") {
+        info.push_str("操作系统: Linux\n");
+    } else if cfg!(target_os = "windows") {
+        info.push_str("操作系统: Windows\n");
+    }
+
+    // devtool 版本
+    info.push_str(&format!("devtool 版本: {}\n", env!("CARGO_PKG_VERSION")));
+
+    // Rust 版本
+    if let Ok(rustc_version) = std::process::Command::new("rustc")
+        .arg("--version")
+        .output()
+    {
+        if let Ok(version) = String::from_utf8(rustc_version.stdout) {
+            info.push_str(&format!("Rust 版本: {}", version.trim()));
+        }
+    }
+
+    info
+}
+
+/// 生成反馈报告
+fn generate_feedback_report(
+    feedback_type: &FeedbackType,
+    message: &str,
+    system_info: &str,
+    _verbose: bool,
+) -> String {
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+
+    format!(
+        "# devtool User Feedback Report
+
+## Basic Information
+- **Submission Time**: {}
+- **Feedback Type**: {:?}
+- **devtool Version**: {}
+
+## Feedback Content
+{}
+
+## System Information
+```
+{}
+```
+
+## Feedback Processing
+- [ ] Received
+- [ ] Analyzed
+- [ ] Processed
+- [ ] Replied
+
+## Notes
+_This feedback was automatically generated by devtool's built-in feedback system_
+",
+        timestamp,
+        feedback_type,
+        env!("CARGO_PKG_VERSION"),
+        message,
+        system_info
+    )
 }

@@ -26,6 +26,9 @@ English | [简体中文](README_zh.md)
 - **🌍 Multi-language support**: Automatically detects system language and displays Chinese or English interface
 - **⌨️ Shell completion**: Comprehensive completion support for bash, zsh, fish, powershell, elvish, and nushell
 - **ℹ️ Version information**: Check version with `devtool -V` or `devtool --version`
+- **📝 User feedback system**: Built-in feedback collection with `devtool feedback` command
+- **🐛 Issue templates**: Standardized GitHub Issues templates for bug reports and feature requests
+- **📊 Feedback analysis**: Tools for analyzing user feedback and improving the product
 
 ## 🛠️ Supported Tools
 
@@ -173,6 +176,19 @@ $ devtool
 
 ```bash
 devtool --dry-run
+```
+
+**User feedback:**
+
+```bash
+# Interactive feedback collection
+devtool feedback
+
+# Direct feedback submission
+devtool feedback --type bug --message "Found an issue with Homebrew updates" --verbose
+
+# Feature request
+devtool feedback --type feature --message "Add support for npm updates"
 ```
 
 **Check version:**
