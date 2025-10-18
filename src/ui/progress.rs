@@ -17,6 +17,7 @@ pub enum ProgressState {
 }
 
 /// 进度条管理器
+#[derive(Clone)]
 pub struct ProgressBarManager {
     multi_progress: Arc<MultiProgress>,
     progress_bars: HashMap<Tool, ProgressBar>,
@@ -69,21 +70,32 @@ impl ProgressBarManager {
 
     /// 为工具创建进度条
     pub fn create_progress_bars(&mut self, tools: &[Tool]) {
+        // 检查是否在交互式终端中
+        let is_interactive =
+            std::env::var("TERM").unwrap_or_default() != "dumb" && atty::is(atty::Stream::Stdout);
+
+        if !is_interactive {
+            // 在非交互式终端中，只记录状态而不显示进度条
+            for tool in tools {
+                self.states.insert(tool.clone(), ProgressState::Preparing);
+            }
+            return;
+        }
+
         for tool in tools {
             let pb = self.multi_progress.add(ProgressBar::new(100));
 
-            // 设置进度条样式
+            // 设置进度条样式 - 使用无边框现代化设计
             pb.set_style(
                 ProgressStyle::default_bar()
-                    .template(
-                        "{spinner:.green} [{elapsed_precise}] [{bar:20.cyan/blue}] {pos}% {msg}",
-                    )
+                    .template("{spinner:.green} {bar:20.cyan/blue} {pos}% {msg}")
                     .unwrap()
-                    .progress_chars("#>-"),
+                    .progress_chars("▰▱▰▱"),
             );
 
             pb.set_message(format!("{} 准备中...", tool.display_name()));
             pb.enable_steady_tick(Duration::from_millis(2000));
+            pb.tick(); // 立即显示进度条
 
             self.progress_bars.insert(tool.clone(), pb);
             self.states.insert(tool.clone(), ProgressState::Preparing);
@@ -92,25 +104,39 @@ impl ProgressBarManager {
 
     /// 更新进度条状态
     pub fn update_state(&mut self, tool: &Tool, new_state: ProgressState) {
+        // 检查是否在交互式终端中
+        let is_interactive =
+            std::env::var("TERM").unwrap_or_default() != "dumb" && atty::is(atty::Stream::Stdout);
+
+        if !is_interactive {
+            // 在非交互式终端中，只记录状态
+            self.states.insert(tool.clone(), new_state);
+            return;
+        }
+
         if let Some(pb) = self.progress_bars.get(tool) {
             match new_state {
                 ProgressState::Preparing => {
                     pb.set_message(format!("{} 准备中...", tool.display_name()));
                     pb.set_position(0);
+                    pb.tick(); // 强制更新显示
                 }
                 ProgressState::Executing => {
                     pb.set_message(format!("{} 执行中...", tool.display_name()));
                     pb.set_position(25);
+                    pb.tick(); // 强制更新显示
                 }
                 ProgressState::Completed => {
                     pb.set_position(100);
                     pb.set_message(format!("✅ {} 完成", tool.display_name()));
-                    // 不立即 finish，保持显示
+                    pb.tick(); // 强制更新显示
+                               // 不立即 finish，保持显示
                 }
                 ProgressState::Failed => {
                     pb.set_position(100);
                     pb.set_message(format!("❌ {} 失败", tool.display_name()));
-                    // 不立即 finish，保持显示
+                    pb.tick(); // 强制更新显示
+                               // 不立即 finish，保持显示
                 }
             }
         }

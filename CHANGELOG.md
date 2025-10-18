@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.12] - 2025-10-18
+
+### Added
+- 进度条显示样式美化
+- 现代化进度条设计
+- 无边框极简主义设计
+
+### Changed
+- 进度条字符从单调的 `#` 升级为美观的 `█▓▒░`
+- 进一步升级为现代字符 `▰▱▰▱`
+- 实现无边框现代化设计
+
+### Improved
+- 显著提升用户体验和视觉效果
+- 符合现代UI设计趋势
+- 提供更优秀的进度反馈
+- 实现极简主义的现代化进度条
+
 ## [0.8.11] - 2025-10-18
 
 ### Fixed

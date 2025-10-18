@@ -1,6 +1,6 @@
 [package]
 name = "devtool"
-version = "0.8.11"
+version = "0.8.12"
 edition = "2021"
 description = "A CLI tool for development in update rustup toolchain, mise maintained tools and homebrew packages."
 documentation = "https://docs.rs/devtool"
@@ -35,6 +35,7 @@ tempfile = "3.10"
 tokio = { version = "1.0", features = ["full"] }
 which = "8.0"
 indicatif = "0.18"
+atty = "0.2"
 
 [dev-dependencies]
 criterion = "0.7"

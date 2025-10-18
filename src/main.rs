@@ -6,7 +6,7 @@ use clap::{CommandFactory, Parser};
 use clap_complete::Shell;
 use clap_complete_nushell::Nushell;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
 use ui::progress::{ProgressBarManager, ProgressState};
 use which::which;
@@ -68,21 +68,26 @@ async fn execute_parallel_updates(
     // 创建进度条管理器
     let mut progress_manager = ProgressBarManager::new();
     progress_manager.create_progress_bars(&tools);
-    let multi_progress = progress_manager.get_multi_progress();
+    let _multi_progress = progress_manager.get_multi_progress();
+
+    // 更新所有工具状态为执行中
+    for tool in &tools {
+        progress_manager.update_state(tool, ProgressState::Executing);
+    }
+
+    // 添加短暂延迟确保进度条显示
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // 使用 Arc<Mutex<>> 来共享进度条管理器
+    let progress_manager = Arc::new(Mutex::new(progress_manager));
+    let progress_manager_for_finalize = progress_manager.clone();
 
     let update_fn = move |tool: Tool| {
         let tool_clone = tool.clone();
-        let _multi_progress = multi_progress.clone();
         let tmpdir_path = tmpdir.clone();
+        let progress_manager = progress_manager.clone(); // 共享进度条管理器
 
         tokio::spawn(async move {
-            // 创建临时进度条管理器来处理单个工具
-            let mut temp_manager = ProgressBarManager::new();
-            temp_manager.create_progress_bars(std::slice::from_ref(&tool_clone));
-
-            // 更新状态为执行中
-            temp_manager.update_state(&tool_clone, ProgressState::Executing);
-
             // 执行工具更新
             let result = execute_tool_update(
                 tool_clone.clone(),
@@ -93,31 +98,37 @@ async fn execute_parallel_updates(
             )
             .await;
 
-            // 根据结果更新状态
-            match &result {
-                Ok(task_result) => {
-                    if task_result.success {
-                        temp_manager.update_state(&tool_clone, ProgressState::Completed);
-                    } else {
-                        temp_manager.update_state(&tool_clone, ProgressState::Failed);
+            // 立即根据结果更新进度条状态
+            if let Ok(mut manager) = progress_manager.lock() {
+                match &result {
+                    Ok(task_result) => {
+                        if task_result.success {
+                            manager.update_state(&tool_clone, ProgressState::Completed);
+                        } else {
+                            manager.update_state(&tool_clone, ProgressState::Failed);
+                        }
+                    }
+                    Err(_) => {
+                        manager.update_state(&tool_clone, ProgressState::Failed);
                     }
                 }
-                Err(_) => {
-                    temp_manager.update_state(&tool_clone, ProgressState::Failed);
-                }
             }
-
-            // 延迟显示完成状态，确保用户能看到结果
-            tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
-
-            // 完成进度条
-            temp_manager.finalize_all();
 
             result
         })
     };
 
-    scheduler.execute_parallel(tools, update_fn).await
+    let results = scheduler.execute_parallel(tools.clone(), update_fn).await?;
+
+    // 延迟显示完成状态，确保用户能看到结果
+    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+
+    // 完成所有进度条
+    if let Ok(mut manager) = progress_manager_for_finalize.lock() {
+        manager.finalize_all();
+    }
+
+    Ok(results)
 }
 
 /// Execute a single tool update
