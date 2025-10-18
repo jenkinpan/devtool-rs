@@ -7,6 +7,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use crate::commands::upgrade_details::{UpgradeDetail, UpgradeDetails, UpgradeDetailsManager};
 use crate::runner::Runner;
 
 /// Homebrew 过时软件包信息
@@ -37,9 +38,45 @@ struct SimpleOutdatedPackage {
 /// 获取并保存过时软件包信息
 ///
 /// 使用 `brew outdated --json` 获取过时软件包信息并保存到临时文件
+/// 包含错误处理和备用机制
 fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<SimpleOutdatedPackage>> {
     let logfile = tmpdir.join("brew_outdated.log");
-    let (_, out) = runner.run("brew outdated --json", &logfile, false)?;
+
+    // 尝试主要方法：brew outdated --json
+    match get_outdated_packages_json(runner, tmpdir, &logfile) {
+        Ok(packages) => {
+            if !packages.is_empty() {
+                return Ok(packages);
+            }
+        }
+        Err(e) => {
+            // 记录错误但不立即失败，尝试备用方法
+            if let Ok(mut file) = File::create(&tmpdir.join("brew_errors.log")) {
+                let _ = writeln!(file, "JSON method failed: {}", e);
+            }
+        }
+    }
+
+    // 备用方法：使用文本格式解析
+    match get_outdated_packages_text(runner, tmpdir, &logfile) {
+        Ok(packages) => Ok(packages),
+        Err(e) => {
+            // 如果所有方法都失败，返回空列表而不是错误
+            if let Ok(mut file) = File::create(&tmpdir.join("brew_errors.log")) {
+                let _ = writeln!(file, "All methods failed: {}", e);
+            }
+            Ok(Vec::new())
+        }
+    }
+}
+
+/// 使用 JSON 格式获取过时软件包信息
+fn get_outdated_packages_json(
+    runner: &dyn Runner,
+    tmpdir: &Path,
+    logfile: &Path,
+) -> Result<Vec<SimpleOutdatedPackage>> {
+    let (_, out) = runner.run("brew outdated --json", logfile, false)?;
 
     let outdated: OutdatedPackages = serde_json::from_str(&out)?;
 
@@ -75,15 +112,36 @@ fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<Simpl
     Ok(all_outdated)
 }
 
-/// Homebrew 更新索引
+/// 使用文本格式获取过时软件包信息（备用方法）
+fn get_outdated_packages_text(
+    runner: &dyn Runner,
+    tmpdir: &Path,
+    logfile: &Path,
+) -> Result<Vec<SimpleOutdatedPackage>> {
+    let (_, out) = runner.run("brew outdated", logfile, false)?;
+
+    let mut packages = Vec::new();
+    for line in out.lines() {
+        if let Some((name, version_info)) = line.split_once(' ') {
+            if let Some((installed, current)) = version_info.split_once(" -> ") {
+                packages.push(SimpleOutdatedPackage {
+                    name: name.to_string(),
+                    installed_version: installed.to_string(),
+                    current_version: current.to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(packages)
+}
+
+/// Homebrew 更新软件包索引
 ///
 /// 执行 `brew update` 更新 Homebrew 的软件包索引
 ///
 /// # 返回值
 /// 返回元组 (状态, 退出码, 日志文件路径)
-/// - 状态: "changed", "unchanged", 或 "failed"
-/// - 退出码: 命令的退出码
-/// - 日志文件路径: 命令输出的日志文件
 pub fn brew_update(
     runner: &dyn Runner,
     tmpdir: &Path,
@@ -141,50 +199,58 @@ pub fn brew_upgrade(
 
     // 获取升级前的过时软件包信息
     let outdated_packages = get_outdated_packages(runner, tmpdir)?;
+
+    // 如果没有过时软件包，直接返回
     if outdated_packages.is_empty() {
         return Ok(("unchanged".to_string(), 0, logfile));
     }
 
     // 执行升级
-    let (rc_upgrade, _out_upgrade) = runner.run("brew upgrade", &logfile, verbose)?;
+    let (rc_upgrade, out_upgrade) = runner.run("brew upgrade", &logfile, verbose)?;
 
     if rc_upgrade != 0 {
         return Ok(("failed".to_string(), rc_upgrade, logfile));
     }
 
-    // 检查升级后的过时软件包信息
-    let updated_outdated = get_outdated_packages(runner, tmpdir)?;
+    // 检查升级输出，如果没有实际升级，直接返回
+    let has_actual_upgrades =
+        out_upgrade.contains("==> Upgrading") || out_upgrade.contains("==> Installing");
 
-    // 比较升级前后的过时软件包，生成升级详情
     let mut upgrade_details = Vec::new();
 
-    for outdated in &outdated_packages {
-        // 检查这个软件包是否还在过时列表中
-        let still_outdated = updated_outdated.iter().any(|p| p.name == outdated.name);
+    if has_actual_upgrades {
+        // 只有在有实际升级时才检查升级后的状态
+        let updated_outdated = get_outdated_packages(runner, tmpdir)?;
 
-        if !still_outdated {
-            // 如果不再过时，说明已经升级了
-            upgrade_details.push(format!(
-                "{}: {} → {}",
-                outdated.name, outdated.installed_version, outdated.current_version
-            ));
-        }
-    }
+        // 比较升级前后的过时软件包，生成升级详情
+        for outdated in &outdated_packages {
+            // 检查这个软件包是否还在过时列表中
+            let still_outdated = updated_outdated.iter().any(|p| p.name == outdated.name);
 
-    // 将升级详情写入文件供主程序读取
-    if !upgrade_details.is_empty() {
-        let details_file = tmpdir.join("brew_upgrade_details.txt");
-        if let Ok(mut file) = File::create(&details_file) {
-            for detail in &upgrade_details {
-                let _ = writeln!(file, "{}", detail);
+            if !still_outdated {
+                // 如果不再过时，说明已经升级了
+                upgrade_details.push(UpgradeDetail::version_upgrade(
+                    outdated.name.clone(),
+                    outdated.installed_version.clone(),
+                    outdated.current_version.clone(),
+                ));
             }
         }
     }
 
-    let state = if upgrade_details.is_empty() {
-        "unchanged"
-    } else {
+    // 创建标准化的升级详情
+    let mut details = UpgradeDetails::new("Homebrew".to_string());
+    details.add_details(upgrade_details);
+
+    // 保存升级详情到标准文件（只有在有升级时才保存）
+    if details.has_upgrades() {
+        let _ = UpgradeDetailsManager::save_upgrade_details(&details, tmpdir, "brew");
+    }
+
+    let state = if details.has_upgrades() {
         "changed"
+    } else {
+        "unchanged"
     };
 
     Ok((state.to_string(), rc_upgrade, logfile))
@@ -200,18 +266,23 @@ pub fn brew_cleanup(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    pbar: &mut Option<()>,
+    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
-    use crate::runner::run_command;
-
     let logfile = tmpdir.join("brew_cleanup.log");
-    let (_rc, to_remove) = run_command("brew cleanup -n --prune=7", &logfile, verbose, pbar)?;
-    let (rc, state) = if to_remove.trim().is_empty() {
-        let (rc_real, _) = runner.run("brew cleanup -n --prune=7", &logfile, verbose)?;
-        (rc_real, "unchanged")
+
+    // 执行清理
+    let (rc_cleanup, out_cleanup) = runner.run("brew cleanup", &logfile, verbose)?;
+
+    if rc_cleanup != 0 {
+        return Ok(("failed".to_string(), rc_cleanup, logfile));
+    }
+
+    // 检查是否有清理内容
+    let state = if out_cleanup.contains("Nothing to clean up") {
+        "unchanged"
     } else {
-        let (rc2, _) = runner.run("brew cleanup --prune=7 --quiet", &logfile, verbose)?;
-        (rc2, "changed")
+        "changed"
     };
-    Ok((state.to_string(), rc, logfile))
+
+    Ok((state.to_string(), rc_cleanup, logfile))
 }

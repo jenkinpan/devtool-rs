@@ -4,3 +4,9 @@ target/
 *.backup
 Cargo.toml.orig
 Cargo.lock
+
+# OpenSpec 工作目录 - 不提交到 GitHub
+openspec/
+
+# Cursor IDE 工作目录 - 不提交到 GitHub
+.cursor/

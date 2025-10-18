@@ -15,15 +15,17 @@ English | [简体中文](README_zh.md)
 - **🚀 Parallel execution**: Default parallel execution for up to 10x faster updates with concurrent tool execution
 - **Smart detection**: Automatically detects installed tools (Homebrew, rustup, mise) and skips uninstalled ones
 - **Enhanced progress feedback**: Multi-progress bars with real-time updates and elapsed time tracking
-- **Detailed logging**: Each step's output is logged for easy troubleshooting
-- **Execution summary**: Clear summary showing which tools were updated, already latest, or failed
-- **Dry run mode**: Use `--dry-run` to preview steps without making changes
-- **Flexible execution modes**: Choose between parallel (default) or sequential execution with `--sequential`
-- **Configurable concurrency**: Set the number of concurrent jobs with `--jobs` (default: 3)
-- **External status monitoring**: Query real-time status with `devtool progress-status` for integration with other tools
-- **Multi-language support**: Automatically detects system language and displays Chinese or English interface
-- **Shell completion**: Comprehensive completion support for bash, zsh, fish, powershell, elvish, and nushell
-- **Version information**: Check version with `devtool -V` or `devtool --version`
+- **📊 Detailed upgrade tracking**: Shows exactly what was upgraded with before/after version information
+- **🔍 Smart version detection**: Only performs version comparison when actual upgrades occur, improving performance
+- **📝 Comprehensive logging**: Each step's output is logged for easy troubleshooting
+- **📋 Execution summary**: Clear summary showing which tools were updated, already latest, or failed
+- **🧪 Dry run mode**: Use `--dry-run` to preview steps without making changes
+- **⚙️ Flexible execution modes**: Choose between parallel (default) or sequential execution with `--sequential`
+- **🔧 Configurable concurrency**: Set the number of concurrent jobs with `--jobs` (default: 3)
+- **📡 External status monitoring**: Query real-time status with `devtool progress-status` for integration with other tools
+- **🌍 Multi-language support**: Automatically detects system language and displays Chinese or English interface
+- **⌨️ Shell completion**: Comprehensive completion support for bash, zsh, fish, powershell, elvish, and nushell
+- **ℹ️ Version information**: Check version with `devtool -V` or `devtool --version`
 
 ## 🛠️ Supported Tools
 
@@ -106,6 +108,44 @@ Customize `devtool` behavior with these options:
 | `--jobs`       |       | Number of concurrent jobs for parallel execution (default: 3)         |
 | `--no-color`   |       | Disable colored output                                                 |
 | `--help`       | `-h`  | Show help information                                                  |
+
+## 📊 Upgrade Details Tracking
+
+`devtool` now provides detailed upgrade tracking, showing exactly what was upgraded with before/after version information:
+
+### Upgrade Detail Display
+
+When upgrades occur, `devtool` shows detailed information about what was changed:
+
+```bash
+🎉 更新完成：2025-10-18 14:00:30 (耗时: 12秒)
+✅ 已更新：Homebrew, Rustup
+ℹ️ 无更新应用。
+
+📋 升级详情：
+Homebrew：升级软件包
+  - git: 2.45.0 → 2.45.1
+  - node: 20.10.0 → 20.11.0
+  - python: 3.12.0 → 3.12.1
+
+Rust：更新工具链
+  - stable-aarch64-apple-darwin: 1.90.0 → 1.91.0
+  - nightly-aarch64-apple-darwin: 1.92.0 → 1.93.0
+```
+
+### Smart Version Detection
+
+- **Performance optimized**: Only performs version comparison when actual upgrades occur
+- **Accurate tracking**: Distinguishes between index updates and actual package upgrades
+- **Unified format**: All tools (Homebrew, Rustup, Mise) use consistent upgrade detail format
+- **Multiple formats**: Supports both JSON and text formats for upgrade details
+
+### Supported Upgrade Types
+
+- **Version upgrades**: `package: old_version → new_version`
+- **New installations**: `package: new installation → version`
+- **Toolchain updates**: Shows Rust toolchain version changes
+- **Tool updates**: Shows Mise-managed tool version changes
 
 ### Examples
 

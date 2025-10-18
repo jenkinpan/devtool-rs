@@ -42,7 +42,7 @@ fn read_upgrade_details(tmpdir: &std::path::Path, tool: &Tool) -> Vec<String> {
     let details_file = match tool {
         Tool::Homebrew => tmpdir.join("brew_upgrade_details.txt"),
         Tool::Rustup => tmpdir.join("rustup_upgrade_details.txt"),
-        Tool::Mise => tmpdir.join("mise_short_updates.txt"),
+        Tool::Mise => tmpdir.join("mise_upgrade_details.txt"),
     };
 
     if let Ok(content) = std::fs::read_to_string(&details_file) {
@@ -59,6 +59,7 @@ async fn execute_parallel_updates(
     dry_run: bool,
     verbose: bool,
     keep_logs: bool,
+    tmpdir: std::path::PathBuf,
     _localized: &LocalizedStrings,
 ) -> Result<Vec<TaskResult>> {
     let scheduler = ParallelScheduler::new(jobs);
@@ -89,6 +90,7 @@ async fn execute_parallel_updates(
         let tool_clone = tool.clone();
         let _multi_progress = multi_progress.clone();
         let progress_bars = progress_bars.clone();
+        let tmpdir_path = tmpdir.clone();
 
         tokio::spawn(async move {
             // 找到对应的进度条
@@ -103,8 +105,14 @@ async fn execute_parallel_updates(
                 pb.set_position(25);
 
                 // 执行工具更新
-                let result =
-                    execute_tool_update(tool_clone.clone(), dry_run, verbose, keep_logs).await;
+                let result = execute_tool_update(
+                    tool_clone.clone(),
+                    dry_run,
+                    verbose,
+                    keep_logs,
+                    &tmpdir_path,
+                )
+                .await;
 
                 // 更新进度条到完成状态
                 pb.set_position(100);
@@ -127,7 +135,7 @@ async fn execute_parallel_updates(
                 result
             } else {
                 // 如果没有找到进度条，直接执行
-                execute_tool_update(tool_clone, dry_run, verbose, keep_logs).await
+                execute_tool_update(tool_clone, dry_run, verbose, keep_logs, &tmpdir_path).await
             }
         })
     };
@@ -141,9 +149,9 @@ async fn execute_tool_update(
     dry_run: bool,
     verbose: bool,
     _keep_logs: bool,
+    tmpdir: &std::path::Path,
 ) -> Result<TaskResult> {
     let runner = ShellRunner;
-    let run_tmp = std::env::temp_dir();
 
     let result = if dry_run {
         TaskResult {
@@ -155,9 +163,9 @@ async fn execute_tool_update(
         match tool {
             Tool::Homebrew => {
                 // Execute homebrew update sequence
-                let update_result = brew_update(&runner, &run_tmp, verbose, &mut None)?;
-                let upgrade_result = brew_upgrade(&runner, &run_tmp, verbose, &mut None)?;
-                let cleanup_result = brew_cleanup(&runner, &run_tmp, verbose, &mut None)?;
+                let update_result = brew_update(&runner, tmpdir, verbose, &mut None)?;
+                let upgrade_result = brew_upgrade(&runner, tmpdir, verbose, &mut None)?;
+                let cleanup_result = brew_cleanup(&runner, tmpdir, verbose, &mut None)?;
 
                 // Check if any step had changes
                 let has_changes = update_result.0 == "changed"
@@ -181,7 +189,7 @@ async fn execute_tool_update(
                 }
             }
             Tool::Rustup => {
-                let result = rustup_update(&runner, &run_tmp, verbose, &mut None)?;
+                let result = rustup_update(&runner, tmpdir, verbose, &mut None)?;
                 let has_changes = result.0 == "changed";
                 let output = if has_changes {
                     "Rustup updated".to_string()
@@ -196,7 +204,7 @@ async fn execute_tool_update(
                 }
             }
             Tool::Mise => {
-                let result = mise_up(&runner, &run_tmp, verbose, &mut None)?;
+                let result = mise_up(&runner, tmpdir, verbose, &mut None)?;
                 let has_changes = result.0 == "changed";
                 let output = if has_changes {
                     "Mise updated".to_string()
@@ -403,6 +411,7 @@ async fn main() -> Result<()> {
             dry_run,
             verbose,
             keep_logs,
+            _run_tmp.clone(),
             &localized,
         )
         .await?;
@@ -466,7 +475,9 @@ async fn main() -> Result<()> {
                     output: format!("{} (dry run)", tool.display_name()),
                 }
             } else {
-                match execute_tool_update(tool.clone(), dry_run, verbose, keep_logs).await {
+                match execute_tool_update(tool.clone(), dry_run, verbose, keep_logs, &_run_tmp)
+                    .await
+                {
                     Ok(result) => result,
                     Err(e) => {
                         if verbose {
@@ -526,10 +537,10 @@ async fn main() -> Result<()> {
     for result in &results {
         if result.success {
             succ.push(result.tool.display_name().to_string());
-            
+
             // 检查是否有升级详情文件来判断是否有真正的升级
             let has_upgrade_details = !read_upgrade_details(&_run_tmp, &result.tool).is_empty();
-            
+
             if result.output.contains("updated") && has_upgrade_details {
                 updated.push(result.tool.display_name().to_string());
             } else if result.output.contains("updated") && !has_upgrade_details {

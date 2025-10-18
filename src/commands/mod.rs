@@ -4,8 +4,10 @@
 pub mod homebrew;
 pub mod mise;
 pub mod rustup;
+pub mod upgrade_details;
 
 // 重新导出各个模块的公共函数
 pub use homebrew::{brew_cleanup, brew_update, brew_upgrade};
 pub use mise::mise_up;
 pub use rustup::rustup_update;
+pub use upgrade_details::{UpgradeDetail, UpgradeDetails, UpgradeDetailsManager};
