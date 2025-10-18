@@ -8,6 +8,7 @@ use clap_complete_nushell::Nushell;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::sync::Arc;
 use tempfile::tempdir;
+use ui::progress::{ProgressBarManager, ProgressState};
 use which::which;
 
 // 模块声明
@@ -64,79 +65,55 @@ async fn execute_parallel_updates(
 ) -> Result<Vec<TaskResult>> {
     let scheduler = ParallelScheduler::new(jobs);
 
-    // 创建多进度条管理器
-    let multi_progress = Arc::new(MultiProgress::new());
-    let mut progress_bars: Vec<(Tool, ProgressBar)> = Vec::new();
-
-    // 为每个工具创建进度条
-    for tool in &tools {
-        let pb = multi_progress.add(ProgressBar::new(100));
-
-        // 设置进度条样式 - 使用更简洁的样式减少显示冲突
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:20.cyan/blue}] {pos}% {msg}")
-                .unwrap()
-                .progress_chars("#>-"),
-        );
-
-        pb.set_message(format!("{} 准备中...", tool.display_name()));
-        // 减少刷新频率，避免显示冲突
-        pb.enable_steady_tick(std::time::Duration::from_millis(2000));
-        progress_bars.push((tool.clone(), pb));
-    }
+    // 创建进度条管理器
+    let mut progress_manager = ProgressBarManager::new();
+    progress_manager.create_progress_bars(&tools);
+    let multi_progress = progress_manager.get_multi_progress();
 
     let update_fn = move |tool: Tool| {
         let tool_clone = tool.clone();
         let _multi_progress = multi_progress.clone();
-        let progress_bars = progress_bars.clone();
         let tmpdir_path = tmpdir.clone();
 
         tokio::spawn(async move {
-            // 找到对应的进度条
-            let pb = progress_bars
-                .iter()
-                .find(|(t, _)| *t == tool_clone)
-                .map(|(_, pb)| pb.clone());
+            // 创建临时进度条管理器来处理单个工具
+            let mut temp_manager = ProgressBarManager::new();
+            temp_manager.create_progress_bars(std::slice::from_ref(&tool_clone));
 
-            if let Some(pb) = pb {
-                // 更新进度条状态
-                pb.set_message(format!("{} 执行中...", tool_clone.display_name()));
-                pb.set_position(25);
+            // 更新状态为执行中
+            temp_manager.update_state(&tool_clone, ProgressState::Executing);
 
-                // 执行工具更新
-                let result = execute_tool_update(
-                    tool_clone.clone(),
-                    dry_run,
-                    verbose,
-                    keep_logs,
-                    &tmpdir_path,
-                )
-                .await;
+            // 执行工具更新
+            let result = execute_tool_update(
+                tool_clone.clone(),
+                dry_run,
+                verbose,
+                keep_logs,
+                &tmpdir_path,
+            )
+            .await;
 
-                // 更新进度条到完成状态
-                pb.set_position(100);
-                match &result {
-                    Ok(task_result) => {
-                        if task_result.success {
-                            pb.set_message(format!("✅ {} 完成", tool_clone.display_name()));
-                        } else {
-                            pb.set_message(format!("❌ {} 失败", tool_clone.display_name()));
-                        }
-                    }
-                    Err(_) => {
-                        pb.set_message(format!("❌ {} 错误", tool_clone.display_name()));
+            // 根据结果更新状态
+            match &result {
+                Ok(task_result) => {
+                    if task_result.success {
+                        temp_manager.update_state(&tool_clone, ProgressState::Completed);
+                    } else {
+                        temp_manager.update_state(&tool_clone, ProgressState::Failed);
                     }
                 }
-                // 添加延迟确保状态更新完成，避免显示冲突
-                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                pb.finish();
-
-                result
-            } else {
-                // 如果没有找到进度条，直接执行
-                execute_tool_update(tool_clone, dry_run, verbose, keep_logs, &tmpdir_path).await
+                Err(_) => {
+                    temp_manager.update_state(&tool_clone, ProgressState::Failed);
+                }
             }
+
+            // 延迟显示完成状态，确保用户能看到结果
+            tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+
+            // 完成进度条
+            temp_manager.finalize_all();
+
+            result
         })
     };
 
