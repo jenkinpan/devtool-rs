@@ -228,7 +228,7 @@ pub fn brew_upgrade(
     }
 
     // 执行升级
-    let (rc_upgrade, out_upgrade) = runner.run("brew upgrade", &logfile, verbose)?;
+    let (rc_upgrade, out_upgrade) = runner.run("brew upgrade --quiet", &logfile, verbose)?;
 
     if rc_upgrade != 0 {
         return Ok(("failed".to_string(), rc_upgrade, logfile));
@@ -293,7 +293,7 @@ pub fn brew_cleanup(
     let logfile = tmpdir.join("brew_cleanup.log");
 
     // 执行清理
-    let (rc_cleanup, out_cleanup) = runner.run("brew cleanup", &logfile, verbose)?;
+    let (rc_cleanup, out_cleanup) = runner.run("brew cleanup --quiet", &logfile, verbose)?;
 
     if rc_cleanup != 0 {
         return Ok(("failed".to_string(), rc_cleanup, logfile));
