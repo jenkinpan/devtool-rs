@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.18] - 2025-10-19
+
+### Fixed
+- 彻底修复进度条重复创建问题
+- 改进环境变量设置机制，完全禁用Homebrew进度条
+- 优化输出重定向逻辑，防止进度条输出到终端
+- 实现进度条隔离机制，确保只有一个进度条系统活跃
+- 修复输出重定向机制中的进度条检测逻辑
+
+### Changed
+- 升级版本号到0.8.18
+- 改进Homebrew命令执行时的环境变量设置
+- 优化进度条状态传递机制
+- 增强输出重定向的可靠性
+
 ## [0.8.17] - 2025-10-19
 
 ### Fixed

@@ -57,11 +57,15 @@ pub fn run_command(
     // 判断当前是否有活动的进度条
     let has_bar = pbar.as_ref().is_some();
 
+    // 强制禁用所有输出到终端，防止进度条重复显示
+    let force_no_output = has_bar;
+
     // 为 stdout 创建读取线程
     if let Some(stdout_rd) = child.stdout.take() {
         let f = Arc::clone(&shared_file);
         let verbose_flag = verbose;
         let has_bar_flag = has_bar;
+        let force_no_output_flag = force_no_output;
         let h = thread::spawn(move || {
             let mut rd = stdout_rd;
             let mut buf = [0u8; 4096];
@@ -75,7 +79,8 @@ pub fn run_command(
                             let _ = fh.flush();
                         }
                         // 当详细模式开启且没有进度条时，输出到终端
-                        if verbose_flag && !has_bar_flag {
+                        // 当存在进度条时，完全禁止输出到终端，防止进度条重复显示
+                        if verbose_flag && !has_bar_flag && !force_no_output_flag {
                             let _ = io::stdout().write_all(&buf[..n]);
                             let _ = io::stdout().flush();
                         }
@@ -92,6 +97,7 @@ pub fn run_command(
         let f = Arc::clone(&shared_file);
         let verbose_flag = verbose;
         let has_bar_flag = has_bar;
+        let force_no_output_flag = force_no_output;
         let h = thread::spawn(move || {
             let mut rd = stderr_rd;
             let mut buf = [0u8; 4096];
@@ -103,7 +109,8 @@ pub fn run_command(
                             let _ = fh.write_all(&buf[..n]);
                             let _ = fh.flush();
                         }
-                        if verbose_flag && !has_bar_flag {
+                        // 当存在进度条时，完全禁止输出到终端，防止进度条重复显示
+                        if verbose_flag && !has_bar_flag && !force_no_output_flag {
                             let _ = io::stdout().write_all(&buf[..n]);
                             let _ = io::stdout().flush();
                         }

@@ -158,6 +158,9 @@ async fn execute_tool_update(
 ) -> Result<TaskResult> {
     let runner = ShellRunner;
 
+    // 创建一个虚拟的进度条标识，确保输出重定向生效
+    let mut progress_bar = Some(());
+
     let result = if dry_run {
         TaskResult {
             tool: tool.clone(),
@@ -167,10 +170,10 @@ async fn execute_tool_update(
     } else {
         match tool {
             Tool::Homebrew => {
-                // Execute homebrew update sequence
-                let update_result = brew_update(&runner, tmpdir, verbose, &mut None)?;
-                let upgrade_result = brew_upgrade(&runner, tmpdir, verbose, &mut None)?;
-                let cleanup_result = brew_cleanup(&runner, tmpdir, verbose, &mut None)?;
+                // Execute homebrew update sequence with progress bar isolation
+                let update_result = brew_update(&runner, tmpdir, verbose, &mut progress_bar)?;
+                let upgrade_result = brew_upgrade(&runner, tmpdir, verbose, &mut progress_bar)?;
+                let cleanup_result = brew_cleanup(&runner, tmpdir, verbose, &mut progress_bar)?;
 
                 // Check if any step had changes
                 let has_changes = update_result.0 == "changed"
@@ -194,7 +197,7 @@ async fn execute_tool_update(
                 }
             }
             Tool::Rustup => {
-                let result = rustup_update(&runner, tmpdir, verbose, &mut None)?;
+                let result = rustup_update(&runner, tmpdir, verbose, &mut progress_bar)?;
                 let has_changes = result.0 == "changed";
                 let output = if has_changes {
                     "Rustup updated".to_string()
@@ -209,7 +212,7 @@ async fn execute_tool_update(
                 }
             }
             Tool::Mise => {
-                let result = mise_up(&runner, tmpdir, verbose, &mut None)?;
+                let result = mise_up(&runner, tmpdir, verbose, &mut progress_bar)?;
                 let has_changes = result.0 == "changed";
                 let output = if has_changes {
                     "Mise updated".to_string()
