@@ -2,7 +2,7 @@
 
 This document outlines the planned features and improvements for devtool-rs. The roadmap is subject to change based on community feedback and priorities.
 
-## Current Version: 0.8.15
+## Current Version: 0.8.16
 
 ### Completed ✅
 
@@ -50,6 +50,12 @@ This document outlines the planned features and improvements for devtool-rs. The
   - 优化 Homebrew 命令执行参数
   - 实现命令执行环境隔离
   - 显著提升 Homebrew 执行过程中的进度条显示稳定性
+- **Upgrade Detection Fix** (v0.8.16)
+  - 修复升级检测逻辑中的缓存更新延迟问题
+  - 解决升级状态判断不准确的问题
+  - 优化升级详情文件生成机制
+  - 改进升级命令执行验证
+  - 显著提升升级检测的准确性和可靠性
 - **Shell Completion Support** (v0.5.6)
   - Comprehensive shell completion for bash, zsh, fish, powershell, elvish, nushell
   - `devtool completion <shell>` command

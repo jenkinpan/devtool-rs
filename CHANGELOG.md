@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.16] - 2025-10-19
+
+### Added
+- 升级检测逻辑修复和测试
+- Homebrew 升级检测问题诊断
+- 版本发布测试机制
+
+### Changed
+- 升级版本号以测试 Homebrew 升级检测修复效果
+- 改进升级检测逻辑，确保升级命令真正执行
+- 优化升级状态判断，准确反映升级结果
+- 增强升级验证机制，确保升级操作成功
+
+### Fixed
+- 修复升级检测逻辑中的缓存更新延迟问题
+- 解决升级状态判断不准确的问题
+- 优化升级详情文件生成机制
+- 改进升级命令执行验证
+
+### Improved
+- 显著提升升级检测的准确性和可靠性
+- 进一步优化升级执行逻辑
+- 改进代码质量和可维护性
+- 增强系统整体稳定性和一致性
+
 ## [0.8.15] - 2025-10-19
 
 ### Added

@@ -249,8 +249,12 @@ pub fn brew_upgrade(
 
     let mut upgrade_details = Vec::new();
 
-    if has_actual_upgrades {
-        // 只有在有实际升级时才检查升级后的状态
+    // 即使没有明显的升级输出，也要检查升级前后的状态变化
+    if has_actual_upgrades || !outdated_packages.is_empty() {
+        // 等待一下让 Homebrew 更新缓存
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+
+        // 检查升级后的状态
         let updated_outdated = get_outdated_packages(runner, tmpdir)?;
 
         // 比较升级前后的过时软件包，生成升级详情
@@ -278,7 +282,14 @@ pub fn brew_upgrade(
         let _ = UpgradeDetailsManager::save_upgrade_details(&details, tmpdir, "brew");
     }
 
+    // 改进状态判断逻辑
     let state = if details.has_upgrades() {
+        "changed"
+    } else if has_actual_upgrades {
+        // 如果有升级输出但没有检测到详情，仍然认为有变化
+        "changed"
+    } else if !outdated_packages.is_empty() {
+        // 如果之前有过时软件包，即使没有检测到升级详情，也可能有变化
         "changed"
     } else {
         "unchanged"
