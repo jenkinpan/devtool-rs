@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.17] - 2025-10-19
+
+### Fixed
+- 修复进度条重复创建问题
+- 改进进度条实例管理机制
+- 优化进度条生命周期管理
+- 修复所有lint和clippy警告
+
+### Changed
+- 升级版本号到0.8.17
+- 改进进度条稳定性，确保每个工具只有一个进度条实例
+- 优化进度条状态管理，防止重复创建
+
 ## [0.8.16] - 2025-10-19
 
 ### Added

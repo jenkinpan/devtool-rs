@@ -92,7 +92,7 @@ async fn execute_parallel_updates(
     // 添加短暂延迟确保进度条显示
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-    // 使用 Arc<Mutex<>> 来共享进度条管理器
+    // 使用 Arc<Mutex<>> 来共享进度条管理器，但避免重复创建
     let progress_manager = Arc::new(Mutex::new(progress_manager));
     let progress_manager_for_finalize = progress_manager.clone();
 
@@ -112,18 +112,21 @@ async fn execute_parallel_updates(
             )
             .await;
 
-            // 立即根据结果更新进度条状态
+            // 立即根据结果更新进度条状态，确保不重复创建
             if let Ok(mut manager) = progress_manager.lock() {
-                match &result {
-                    Ok(task_result) => {
-                        if task_result.success {
-                            manager.update_state(&tool_clone, ProgressState::Completed);
-                        } else {
+                // 检查工具是否已有进度条，避免重复创建
+                if manager.has_progress_bar(&tool_clone) {
+                    match &result {
+                        Ok(task_result) => {
+                            if task_result.success {
+                                manager.update_state(&tool_clone, ProgressState::Completed);
+                            } else {
+                                manager.update_state(&tool_clone, ProgressState::Failed);
+                            }
+                        }
+                        Err(_) => {
                             manager.update_state(&tool_clone, ProgressState::Failed);
                         }
-                    }
-                    Err(_) => {
-                        manager.update_state(&tool_clone, ProgressState::Failed);
                     }
                 }
             }

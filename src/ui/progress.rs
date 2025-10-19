@@ -3,7 +3,7 @@ use crate::parallel::Tool;
 use crate::utils::get_cache_dir;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
@@ -127,6 +127,10 @@ pub struct ProgressBarManager {
     progress_bars: HashMap<Tool, ProgressBar>,
     states: HashMap<Tool, ProgressState>,
     animation_manager: ProgressAnimationManager,
+    /// 进度条实例计数器，用于跟踪创建的进度条数量
+    instance_count: Arc<std::sync::atomic::AtomicUsize>,
+    /// 已创建的工具集合，防止重复创建
+    created_tools: Arc<std::sync::Mutex<HashSet<Tool>>>,
 }
 
 /// 进度状态结构体
@@ -224,6 +228,8 @@ impl ProgressBarManager {
             progress_bars: HashMap::new(),
             states: HashMap::new(),
             animation_manager,
+            instance_count: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            created_tools: Arc::new(std::sync::Mutex::new(HashSet::new())),
         }
     }
 
@@ -248,6 +254,15 @@ impl ProgressBarManager {
                 continue;
             }
 
+            // 检查是否已经在其他实例中创建过
+            if let Ok(mut created_tools) = self.created_tools.lock() {
+                if created_tools.contains(tool) {
+                    // 如果已经在其他实例中创建过，跳过创建
+                    continue;
+                }
+                created_tools.insert(tool.clone());
+            }
+
             let pb = self.multi_progress.add(ProgressBar::new(100));
 
             // 设置进度条样式 - 使用无边框现代化设计
@@ -264,6 +279,10 @@ impl ProgressBarManager {
 
             self.progress_bars.insert(tool.clone(), pb);
             self.states.insert(tool.clone(), ProgressState::Preparing);
+
+            // 增加实例计数器
+            self.instance_count
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         }
     }
 
@@ -385,6 +404,42 @@ impl ProgressBarManager {
                     self.animation_manager.update_state_time();
                 }
             }
+        }
+    }
+
+    /// 获取进度条实例数量
+    ///
+    /// 这个方法用于获取当前创建的进度条实例数量，用于调试和监控。
+    /// 目前未使用，但保留用于未来的进度条管理功能。
+    #[allow(dead_code)]
+    pub fn get_instance_count(&self) -> usize {
+        self.instance_count
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// 检查工具是否已在任何实例中创建
+    ///
+    /// 这个方法用于检查指定工具是否已经在任何实例中创建过进度条。
+    /// 目前未使用，但保留用于未来的进度条管理功能。
+    #[allow(dead_code)]
+    pub fn is_tool_created(&self, tool: &Tool) -> bool {
+        if let Ok(created_tools) = self.created_tools.lock() {
+            created_tools.contains(tool)
+        } else {
+            false
+        }
+    }
+
+    /// 清理进度条实例
+    ///
+    /// 这个方法用于清理进度条实例，重置计数器。
+    /// 目前未使用，但保留用于未来的进度条管理功能。
+    #[allow(dead_code)]
+    pub fn cleanup_instances(&mut self) {
+        self.instance_count
+            .store(0, std::sync::atomic::Ordering::Relaxed);
+        if let Ok(mut created_tools) = self.created_tools.lock() {
+            created_tools.clear();
         }
     }
 }
