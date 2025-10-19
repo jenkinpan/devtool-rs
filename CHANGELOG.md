@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.20] - 2025-10-19
+
+### Fixed
+- 完全重写进度条系统，彻底解决进度条重复创建问题
+- 移除复杂的全局状态管理，使用简化的本地状态管理
+- 简化进度条状态枚举，从6个状态减少到4个状态
+- 避免复杂的动画和状态转换逻辑
+
+### Changed
+- 升级版本号到0.8.20
+- 完全重写进度条架构，使用 `SimpleProgressManager` 替代 `ProgressBarManager`
+- 简化进度条状态管理，移除复杂的全局状态
+- 优化并发处理，每个执行上下文有独立的进度条管理器
+
+### Technical Details
+- 重写 `src/ui/progress.rs`，实现 `SimpleProgressManager` 和 `SimpleProgressState`
+- 移除复杂的 `ProgressAnimationManager` 和全局状态管理
+- 简化进度条创建和更新逻辑
+- 移除不再支持的 `progress-status` 子命令
+- 确保每个工具只创建一个进度条，彻底解决重复显示问题
+
 ## [0.8.19] - 2025-10-19
 
 ### Fixed
