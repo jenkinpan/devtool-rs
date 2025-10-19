@@ -109,6 +109,50 @@ impl UpgradeDetail {
             }
         }
     }
+
+    /// 格式化为增强的显示字符串（支持工具链类型标识）
+    pub fn to_enhanced_string(&self) -> String {
+        let toolchain_type = self.get_toolchain_type();
+        let type_indicator = if !toolchain_type.is_empty() {
+            format!("[{}] ", toolchain_type)
+        } else {
+            String::new()
+        };
+
+        match self.upgrade_type {
+            UpgradeType::VersionUpgrade => {
+                format!(
+                    "{}{}: {} → {}",
+                    type_indicator, self.name, self.old_version, self.new_version
+                )
+            }
+            UpgradeType::NewInstallation => {
+                format!(
+                    "{}{}: new installation → {}",
+                    type_indicator, self.name, self.new_version
+                )
+            }
+            UpgradeType::Downgrade => {
+                format!(
+                    "{}{}: {} → {} (降级)",
+                    type_indicator, self.name, self.old_version, self.new_version
+                )
+            }
+        }
+    }
+
+    /// 获取工具链类型标识
+    fn get_toolchain_type(&self) -> String {
+        if self.name.contains("stable") {
+            "stable".to_string()
+        } else if self.name.contains("beta") {
+            "beta".to_string()
+        } else if self.name.contains("nightly") {
+            "nightly".to_string()
+        } else {
+            String::new()
+        }
+    }
 }
 
 impl UpgradeDetails {
@@ -202,6 +246,61 @@ impl UpgradeDetails {
         Ok(())
     }
 
+    /// 保存到增强文本文件（支持工具链类型分组）
+    pub fn save_to_enhanced_text_file(&self, file_path: &Path) -> Result<()> {
+        let mut file = File::create(file_path)?;
+
+        // 按工具链类型分组
+        let mut stable_upgrades = Vec::new();
+        let mut beta_upgrades = Vec::new();
+        let mut nightly_upgrades = Vec::new();
+        let mut other_upgrades = Vec::new();
+
+        for detail in &self.details {
+            let toolchain_type = detail.get_toolchain_type();
+            match toolchain_type.as_str() {
+                "stable" => stable_upgrades.push(detail),
+                "beta" => beta_upgrades.push(detail),
+                "nightly" => nightly_upgrades.push(detail),
+                _ => other_upgrades.push(detail),
+            }
+        }
+
+        // 写入分组后的内容
+        if !stable_upgrades.is_empty() {
+            writeln!(file, "Stable 工具链:")?;
+            for detail in stable_upgrades {
+                writeln!(file, "  {}", detail.to_enhanced_string())?;
+            }
+            writeln!(file)?;
+        }
+
+        if !beta_upgrades.is_empty() {
+            writeln!(file, "Beta 工具链:")?;
+            for detail in beta_upgrades {
+                writeln!(file, "  {}", detail.to_enhanced_string())?;
+            }
+            writeln!(file)?;
+        }
+
+        if !nightly_upgrades.is_empty() {
+            writeln!(file, "Nightly 工具链:")?;
+            for detail in nightly_upgrades {
+                writeln!(file, "  {}", detail.to_enhanced_string())?;
+            }
+            writeln!(file)?;
+        }
+
+        if !other_upgrades.is_empty() {
+            writeln!(file, "其他工具链:")?;
+            for detail in other_upgrades {
+                writeln!(file, "  {}", detail.to_enhanced_string())?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// 从 JSON 文件加载
     pub fn load_from_json_file(file_path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(file_path)?;
@@ -291,6 +390,12 @@ impl UpgradeDetailsManager {
         // 保存文本格式（用于显示）
         let text_file = tmpdir.join(format!("{}_upgrade_details.txt", tool_name));
         details.save_to_text_file(&text_file)?;
+
+        // 为 Rustup 保存增强格式（支持工具链类型分组）
+        if tool_name == "rustup" {
+            let enhanced_file = tmpdir.join(format!("{}_upgrade_details_enhanced.txt", tool_name));
+            details.save_to_enhanced_text_file(&enhanced_file)?;
+        }
 
         Ok(())
     }

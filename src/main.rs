@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use clap_complete::Shell;
 use clap_complete_nushell::Nushell;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+// 移除未使用的 indicatif 导入，现在使用 ProgressBarManager
 use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
 use ui::progress::{ProgressBarManager, ProgressState};
@@ -27,6 +27,7 @@ use i18n::LocalizedStrings;
 use parallel::{ParallelScheduler, TaskResult, Tool};
 use runner::ShellRunner;
 use ui::colors::{print_banner, print_error, print_info, print_success, print_warning};
+use ui::icons::IconManager;
 use ui::progress::progress_status_cmd;
 
 /// Get detailed description of what a tool will do
@@ -38,11 +39,24 @@ fn get_tool_description(tool: &Tool) -> String {
     }
 }
 
+/// 获取全局图标管理器
+fn get_icon_manager() -> IconManager {
+    IconManager::new()
+}
+
 /// 读取升级详情文件
 fn read_upgrade_details(tmpdir: &std::path::Path, tool: &Tool) -> Vec<String> {
     let details_file = match tool {
         Tool::Homebrew => tmpdir.join("brew_upgrade_details.txt"),
-        Tool::Rustup => tmpdir.join("rustup_upgrade_details.txt"),
+        Tool::Rustup => {
+            // 优先使用增强格式的 Rustup 升级详情
+            let enhanced_file = tmpdir.join("rustup_upgrade_details_enhanced.txt");
+            if enhanced_file.exists() {
+                enhanced_file
+            } else {
+                tmpdir.join("rustup_upgrade_details.txt")
+            }
+        }
         Tool::Mise => tmpdir.join("mise_upgrade_details.txt"),
     };
 
@@ -77,6 +91,9 @@ async fn execute_parallel_updates(
 
     // 添加短暂延迟确保进度条显示
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // 启动全局进度更新
+    progress_manager.start_global_progress_updates(&tools);
 
     // 使用 Arc<Mutex<>> 来共享进度条管理器
     let progress_manager = Arc::new(Mutex::new(progress_manager));
@@ -349,11 +366,17 @@ async fn main() -> Result<()> {
 
     let total = available_tools.len();
     if total == 0 {
+        let icons = get_icon_manager();
         let warning_msg = if system_lang == "zh" {
-            format!("⚠️ 未检测到可执行步骤。跳过： {}", skipped.join(", "))
+            format!(
+                "{} 未检测到可执行步骤。跳过： {}",
+                icons.warning(),
+                skipped.join(", ")
+            )
         } else {
             format!(
-                "⚠️ No executable steps detected. Skipped: {}",
+                "{} No executable steps detected. Skipped: {}",
+                icons.warning(),
                 skipped.join(", ")
             )
         };
@@ -374,8 +397,10 @@ async fn main() -> Result<()> {
     // let mut pb_opt = Some(Bar::new(total, "devtool"));
 
     // 打印工具列表
+    let icons = get_icon_manager();
     let tools_msg = format!(
-        "📋 {}",
+        "{} {}",
+        icons.clipboard(),
         localized.steps_count.replace("{}", &total.to_string())
     );
     if ui::colors::supports_color() && !no_color {
@@ -401,7 +426,7 @@ async fn main() -> Result<()> {
     if use_parallel {
         // 并行执行
         if verbose {
-            println!("🚀 并行执行模式 (最大并发数: {})", jobs);
+            println!("{} 并行执行模式 (最大并发数: {})", icons.rocket(), jobs);
         }
         results = execute_parallel_updates(
             available_tools,
@@ -430,41 +455,32 @@ async fn main() -> Result<()> {
             }
         }
     } else {
-        // 顺序执行 - 使用 indicatif 进度条
+        // 顺序执行 - 使用统一的 ProgressBarManager
         if verbose {
             println!("🔄 顺序执行模式");
         }
-        let multi_progress = Arc::new(MultiProgress::new());
-        let mut progress_bars: Vec<(Tool, ProgressBar)> = Vec::new();
 
-        // 为每个工具创建进度条
+        // 创建进度条管理器
+        let mut progress_manager = ProgressBarManager::new();
+        progress_manager.create_progress_bars(&available_tools);
+        let _multi_progress = progress_manager.get_multi_progress();
+
+        // 更新所有工具状态为执行中
         for tool in &available_tools {
-            let pb = multi_progress.add(ProgressBar::new(100));
-
-            // 设置进度条样式 - 使用更简洁的样式减少显示冲突
-            pb.set_style(
-                ProgressStyle::default_bar()
-                    .template(
-                        "{spinner:.green} [{elapsed_precise}] [{bar:20.cyan/blue}] {pos}% {msg}",
-                    )
-                    .unwrap()
-                    .progress_chars("#>-"),
-            );
-
-            pb.set_message(format!("{} 准备中...", tool.display_name()));
-            // 减少刷新频率，避免显示冲突
-            pb.enable_steady_tick(std::time::Duration::from_millis(2000));
-            progress_bars.push((tool.clone(), pb));
+            progress_manager.update_state(tool, ProgressState::Executing);
         }
+
+        // 添加短暂延迟确保进度条显示
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         // 顺序执行每个工具
         for tool in available_tools.iter() {
-            // 找到对应的进度条
-            if let Some((_, pb)) = progress_bars.iter().find(|(t, _)| *t == *tool) {
-                // 更新进度条状态
-                pb.set_message(format!("{} 执行中...", tool.display_name()));
-                pb.set_position(25);
-            }
+            // 模拟进度更新
+            tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+            progress_manager.update_state(tool, ProgressState::ExecutingMid);
+
+            tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+            progress_manager.update_state(tool, ProgressState::ExecutingLate);
 
             let result = if dry_run {
                 TaskResult {
@@ -491,17 +507,14 @@ async fn main() -> Result<()> {
             };
 
             // 更新进度条到完成状态
-            if let Some((_, pb)) = progress_bars.iter().find(|(t, _)| *t == *tool) {
-                pb.set_position(100);
-                if result.success {
-                    pb.set_message(format!("✅ {} 完成", tool.display_name()));
-                } else {
-                    pb.set_message(format!("❌ {} 失败", tool.display_name()));
-                }
-                // 添加延迟确保状态更新完成，避免显示冲突
-                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                pb.finish();
+            if result.success {
+                progress_manager.update_state(tool, ProgressState::Completed);
+            } else {
+                progress_manager.update_state(tool, ProgressState::Failed);
             }
+
+            // 添加延迟确保状态更新完成
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
             // 收集升级详情
             if result.success {
@@ -517,12 +530,10 @@ async fn main() -> Result<()> {
             }
 
             results.push(result);
-
-            // 使用 indicatif 进度条，不需要更新旧进度条
-            // if let Some(pb) = pb_opt.as_mut() {
-            //     pb.update_to(idx + 1, &format!("{} 完成", tool.display_name()));
-            // }
         }
+
+        // 完成所有进度条
+        progress_manager.finalize_all();
     }
 
     // 处理执行结果
@@ -581,7 +592,7 @@ async fn main() -> Result<()> {
     };
 
     let update_complete_msg = format!(
-        "\n{}{} ({}: {})",
+        "\n{} {} ({}: {})",
         localized.update_complete,
         end_time.format("%Y-%m-%d %H:%M:%S"),
         localized.time_taken,
@@ -592,40 +603,60 @@ async fn main() -> Result<()> {
         print_success(&update_complete_msg);
         if !updated.is_empty() {
             let updated_msg = if system_lang == "zh" {
-                format!("✅ 已更新：{}", updated.join(", "))
+                format!("{} 已更新：{}", icons.success(), updated.join(", "))
             } else {
-                format!("✅ Updated: {}", updated.join(", "))
+                format!("{} Updated: {}", icons.success(), updated.join(", "))
             };
             print_success(&updated_msg);
         } else {
-            print_info(&localized.no_updates);
+            print_info(&format!("{} {}", icons.info(), localized.no_updates));
         }
         if !actions.is_empty() {
-            let actions_msg = format!("{}{}", localized.actions_executed, actions.join(", "));
+            let actions_msg = format!(
+                "{}{}{}",
+                icons.tools(),
+                localized.actions_executed,
+                actions.join(", ")
+            );
             print_info(&actions_msg);
         }
         if !unchanged.is_empty() {
-            let unchanged_msg = format!("{}{}", localized.already_latest, unchanged.join(", "));
+            let unchanged_msg = format!(
+                "{}{}{}",
+                icons.warning(),
+                localized.already_latest,
+                unchanged.join(", ")
+            );
             print_warning(&unchanged_msg);
         }
     } else {
         println!("{}", update_complete_msg);
         if !updated.is_empty() {
             let updated_msg = if system_lang == "zh" {
-                format!("✅ 已更新：{}", updated.join(", "))
+                format!("{} 已更新：{}", icons.success(), updated.join(", "))
             } else {
-                format!("✅ Updated: {}", updated.join(", "))
+                format!("{} Updated: {}", icons.success(), updated.join(", "))
             };
             println!("{}", updated_msg);
         } else {
-            println!("{}", localized.no_updates);
+            println!("{} {}", icons.info(), localized.no_updates);
         }
         if !actions.is_empty() {
-            let actions_msg = format!("{}{}", localized.actions_executed, actions.join(", "));
+            let actions_msg = format!(
+                "{}{}{}",
+                icons.tools(),
+                localized.actions_executed,
+                actions.join(", ")
+            );
             println!("{}", actions_msg);
         }
         if !unchanged.is_empty() {
-            let unchanged_msg = format!("{}{}", localized.already_latest, unchanged.join(", "));
+            let unchanged_msg = format!(
+                "{}{}{}",
+                icons.warning(),
+                localized.already_latest,
+                unchanged.join(", ")
+            );
             println!("{}", unchanged_msg);
         }
     }
@@ -634,9 +665,9 @@ async fn main() -> Result<()> {
     if let Some(vals) = short_updates.get("Homebrew：升级软件包") {
         if !vals.is_empty() {
             if ui::colors::supports_color() && !no_color {
-                print_info("📦 Homebrew 升级详情：");
+                print_info(&format!("{} Homebrew 升级详情：", icons.package()));
             } else {
-                println!("📦 Homebrew 升级详情：");
+                println!("{} Homebrew 升级详情：", icons.package());
             }
             for detail in vals {
                 println!("   {}", detail);
@@ -647,9 +678,9 @@ async fn main() -> Result<()> {
     if let Some(vals) = short_updates.get("Rust：更新工具链") {
         if !vals.is_empty() {
             if ui::colors::supports_color() && !no_color {
-                print_info("🦀 Rust 升级详情：");
+                print_info(&format!("{} Rust 升级详情：", icons.rust()));
             } else {
-                println!("🦀 Rust 升级详情：");
+                println!("{} Rust 升级详情：", icons.rust());
             }
             for detail in vals {
                 println!("   {}", detail);
@@ -660,9 +691,9 @@ async fn main() -> Result<()> {
     if let Some(vals) = short_updates.get("Mise：更新托管工具") {
         if !vals.is_empty() {
             if ui::colors::supports_color() && !no_color {
-                print_info("🔧 Mise 升级详情：");
+                print_info(&format!("{} Mise 升级详情：", icons.wrench()));
             } else {
-                println!("🔧 Mise 升级详情：");
+                println!("{} Mise 升级详情：", icons.wrench());
             }
             for detail in vals {
                 println!("   {}", detail);
@@ -672,9 +703,9 @@ async fn main() -> Result<()> {
 
     if !fail.is_empty() {
         if ui::colors::supports_color() && !no_color {
-            print_error(&format!("❌ 失败：{}", fail.join(", ")));
+            print_error(&format!("{} 失败：{}", icons.failure(), fail.join(", ")));
         } else {
-            println!("❌ 失败：{}", fail.join(", "));
+            println!("{} 失败：{}", icons.failure(), fail.join(", "));
         }
         std::process::exit(1);
     }
@@ -763,21 +794,27 @@ fn handle_feedback_command(
     std::fs::write(&feedback_file, &feedback_report)?;
 
     // 显示反馈信息
+    let icons = get_icon_manager();
     if ui::colors::supports_color() {
         print_success(&format!(
-            "✅ Feedback saved to: {}",
+            "{} Feedback saved to: {}",
+            icons.success(),
             feedback_file.display()
         ));
     } else {
-        println!("✅ Feedback saved to: {}", feedback_file.display());
+        println!(
+            "{} Feedback saved to: {}",
+            icons.success(),
+            feedback_file.display()
+        );
     }
 
-    println!("\n📋 Feedback Summary:");
+    println!("\n{} Feedback Summary:", icons.clipboard());
     println!("Type: {:?}", feedback_type);
     println!("Content: {}", feedback_message);
 
     if verbose {
-        println!("\n🔧 System Information:");
+        println!("\n{} System Information:", icons.tools());
         println!("{}", system_info);
     }
 

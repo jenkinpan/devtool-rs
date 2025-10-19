@@ -1,0 +1,16 @@
+# Rustfmt configuration for devtool-rs
+# This file defines code formatting standards
+
+# Basic formatting options
+edition = "2021"
+max_width = 100
+tab_spaces = 4
+newline_style = "Unix"
+
+# Function and struct formatting
+fn_params_layout = "Tall"
+
+# Other formatting options
+use_field_init_shorthand = true
+use_try_shorthand = true
+force_explicit_abi = true

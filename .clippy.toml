@@ -1,0 +1,5 @@
+# Clippy configuration for devtool-rs
+# This file defines code quality standards and linting rules
+
+# Warn on all clippy warnings
+warn-on-all-wildcard-imports = true

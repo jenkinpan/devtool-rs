@@ -73,22 +73,22 @@ impl LocalizedStrings {
     pub fn new(lang: &str) -> Self {
         match lang {
             "zh" => Self {
-                banner: "🚀 开始 devtool 更新：".to_string(),
+                banner: "开始 devtool 更新：".to_string(),
                 steps_count: "将执行 {} 个步骤：".to_string(),
-                update_complete: "🎉 更新完成：".to_string(),
+                update_complete: "更新完成：".to_string(),
                 time_taken: "耗时".to_string(),
-                no_updates: "ℹ️ 无更新应用。".to_string(),
-                actions_executed: "🛠️ 已执行动作：".to_string(),
-                already_latest: "⚠️ 已是最新：".to_string(),
+                no_updates: "无更新应用。".to_string(),
+                actions_executed: "已执行动作：".to_string(),
+                already_latest: "已是最新：".to_string(),
             },
             _ => Self {
-                banner: "🚀 Starting devtool update: ".to_string(),
+                banner: "Starting devtool update: ".to_string(),
                 steps_count: "Will execute {} steps:".to_string(),
-                update_complete: "🎉 Update completed: ".to_string(),
+                update_complete: "Update completed: ".to_string(),
                 time_taken: "Time taken".to_string(),
-                no_updates: "ℹ️ No updates applied.".to_string(),
-                actions_executed: "🛠️ Actions executed: ".to_string(),
-                already_latest: "⚠️ Already latest: ".to_string(),
+                no_updates: "No updates applied.".to_string(),
+                actions_executed: "Actions executed: ".to_string(),
+                already_latest: "Already latest: ".to_string(),
             },
         }
     }

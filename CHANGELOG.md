@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.13] - 2025-10-19
+
+### Added
+- 进度条平滑过渡功能
+- 进度条状态验证机制
+- 全局进度条管理
+- 代码质量优化工具
+
+### Changed
+- 实现进度条平滑过渡，从 25% 到 50% 到 75% 到 100%
+- 修复重复进度条显示问题
+- 统一并行和顺序执行模式的进度条管理
+- 优化进度条显示稳定性
+
+### Fixed
+- 修复进度条重复显示问题
+- 消除所有 lint 和 clippy 警告
+- 修复进度条状态转换验证
+- 优化进度条创建和销毁逻辑
+
+### Improved
+- 显著提升进度条显示质量
+- 改进代码可维护性
+- 优化用户体验
+- 增强系统稳定性
+
 ## [0.8.12] - 2025-10-18
 
 ### Added
