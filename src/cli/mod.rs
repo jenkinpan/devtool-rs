@@ -95,8 +95,6 @@ pub enum Commands {
         #[arg(value_enum)]
         shell: ShellType,
     },
-    /// 显示进度状态
-    ProgressStatus,
     /// 收集用户反馈
     Feedback {
         /// 反馈类型

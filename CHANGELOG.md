@@ -8,21 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.19] - 2025-10-19
 
 ### Fixed
-- 彻底修复进度条重复创建问题的根本原因
-- 实施全局 `created_tools` 集合，使用 `OnceLock` 确保所有 `ProgressBarManager` 实例共享同一个去重集合
-- 修复 `ProgressBarManager` 去重机制失效的问题
-- 确保每个工具只创建一个进度条，彻底解决重复显示问题
+- 完全重写进度条系统，彻底解决进度条重复创建问题
+- 移除复杂的全局状态管理，使用简化的本地状态管理
+- 简化进度条状态枚举，从6个状态减少到4个状态
+- 避免复杂的动画和状态转换逻辑
 
 ### Changed
 - 升级版本号到0.8.19
-- 改进进度条管理架构，使用全局状态管理
-- 优化进度条生命周期管理机制
+- 完全重写进度条架构，使用 `SimpleProgressManager` 替代 `ProgressBarManager`
+- 简化进度条状态管理，移除复杂的全局状态
+- 优化并发处理，每个执行上下文有独立的进度条管理器
 
 ### Technical Details
-- 添加全局 `GLOBAL_CREATED_TOOLS` 静态变量
-- 实现 `get_global_created_tools()` 函数
-- 修改 `ProgressBarManager::new()` 使用全局集合
-- 确保所有 `ProgressBarManager` 实例共享同一个去重集合
+- 重写 `src/ui/progress.rs`，实现 `SimpleProgressManager` 和 `SimpleProgressState`
+- 移除复杂的 `ProgressAnimationManager` 和全局状态管理
+- 简化进度条创建和更新逻辑
+- 移除不再支持的 `progress-status` 子命令
+- 确保每个工具只创建一个进度条，彻底解决重复显示问题
 
 ## [0.8.18] - 2025-10-19
 

@@ -8,7 +8,7 @@ use clap_complete_nushell::Nushell;
 // 移除未使用的 indicatif 导入，现在使用 ProgressBarManager
 use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
-use ui::progress::{ProgressBarManager, ProgressState};
+use ui::progress::{SimpleProgressManager, SimpleProgressState};
 use which::which;
 
 // 模块声明
@@ -28,7 +28,6 @@ use parallel::{ParallelScheduler, TaskResult, Tool};
 use runner::ShellRunner;
 use ui::colors::{print_banner, print_error, print_info, print_success, print_warning};
 use ui::icons::IconManager;
-use ui::progress::progress_status_cmd;
 
 /// Get detailed description of what a tool will do
 fn get_tool_description(tool: &Tool) -> String {
@@ -79,20 +78,19 @@ async fn execute_parallel_updates(
 ) -> Result<Vec<TaskResult>> {
     let scheduler = ParallelScheduler::new(jobs);
 
-    // 创建进度条管理器
-    let mut progress_manager = ProgressBarManager::new();
+    // 创建简化的进度条管理器
+    let mut progress_manager = SimpleProgressManager::new();
     progress_manager.create_progress_bars(&tools);
-    let _multi_progress = progress_manager.get_multi_progress();
 
     // 更新所有工具状态为执行中
     for tool in &tools {
-        progress_manager.update_state(tool, ProgressState::Executing);
+        progress_manager.update_state(tool, SimpleProgressState::Executing);
     }
 
     // 添加短暂延迟确保进度条显示
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-    // 使用 Arc<Mutex<>> 来共享进度条管理器，但避免重复创建
+    // 使用 Arc<Mutex<>> 来共享进度条管理器
     let progress_manager = Arc::new(Mutex::new(progress_manager));
     let progress_manager_for_finalize = progress_manager.clone();
 
@@ -112,20 +110,20 @@ async fn execute_parallel_updates(
             )
             .await;
 
-            // 立即根据结果更新进度条状态，确保不重复创建
+            // 立即根据结果更新进度条状态
             if let Ok(mut manager) = progress_manager.lock() {
-                // 检查工具是否已有进度条，避免重复创建
+                // 检查工具是否已有进度条
                 if manager.has_progress_bar(&tool_clone) {
                     match &result {
                         Ok(task_result) => {
                             if task_result.success {
-                                manager.update_state(&tool_clone, ProgressState::Completed);
+                                manager.update_state(&tool_clone, SimpleProgressState::Completed);
                             } else {
-                                manager.update_state(&tool_clone, ProgressState::Failed);
+                                manager.update_state(&tool_clone, SimpleProgressState::Failed);
                             }
                         }
                         Err(_) => {
-                            manager.update_state(&tool_clone, ProgressState::Failed);
+                            manager.update_state(&tool_clone, SimpleProgressState::Failed);
                         }
                     }
                 }
@@ -263,11 +261,6 @@ async fn main() -> Result<()> {
             }
         }
         return Ok(());
-    }
-
-    // 处理 progress-status 子命令
-    if let Some(Commands::ProgressStatus) = &args.command {
-        return progress_status_cmd();
     }
 
     // 处理 feedback 子命令
@@ -458,19 +451,18 @@ async fn main() -> Result<()> {
             }
         }
     } else {
-        // 顺序执行 - 使用统一的 ProgressBarManager
+        // 顺序执行 - 使用简化的进度条管理器
         if verbose {
             println!("🔄 顺序执行模式");
         }
 
-        // 创建进度条管理器
-        let mut progress_manager = ProgressBarManager::new();
+        // 创建简化的进度条管理器
+        let mut progress_manager = SimpleProgressManager::new();
         progress_manager.create_progress_bars(&available_tools);
-        let _multi_progress = progress_manager.get_multi_progress();
 
         // 更新所有工具状态为执行中
         for tool in &available_tools {
-            progress_manager.update_state(tool, ProgressState::Executing);
+            progress_manager.update_state(tool, SimpleProgressState::Executing);
         }
 
         // 添加短暂延迟确保进度条显示
@@ -478,13 +470,6 @@ async fn main() -> Result<()> {
 
         // 顺序执行每个工具
         for tool in available_tools.iter() {
-            // 模拟进度更新
-            tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-            progress_manager.update_state(tool, ProgressState::ExecutingMid);
-
-            tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
-            progress_manager.update_state(tool, ProgressState::ExecutingLate);
-
             let result = if dry_run {
                 TaskResult {
                     tool: tool.clone(),
@@ -511,9 +496,9 @@ async fn main() -> Result<()> {
 
             // 更新进度条到完成状态
             if result.success {
-                progress_manager.update_state(tool, ProgressState::Completed);
+                progress_manager.update_state(tool, SimpleProgressState::Completed);
             } else {
-                progress_manager.update_state(tool, ProgressState::Failed);
+                progress_manager.update_state(tool, SimpleProgressState::Failed);
             }
 
             // 添加延迟确保状态更新完成
