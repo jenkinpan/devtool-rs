@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.15] - 2025-10-19
+
+### Added
+- Homebrew 进度条输出控制机制
+- 环境变量控制 Homebrew 进度条显示
+- 命令执行环境隔离功能
+
+### Changed
+- 彻底解决 Homebrew 工具执行过程中的进度条重复创建问题
+- 使用 HOMEBREW_NO_PROGRESS=1 环境变量禁用 Homebrew 内部进度条
+- 优化 Homebrew 命令执行参数
+- 改进进度条显示稳定性和用户体验
+
+### Fixed
+- 修复 Homebrew 命令执行过程中的进度条重复显示问题
+- 解决 brew update、brew upgrade、brew cleanup 命令的进度条冲突
+- 优化进度条输出控制机制
+- 改进命令执行环境隔离
+
+### Improved
+- 显著提升 Homebrew 执行过程中的进度条显示稳定性
+- 进一步优化用户体验和进度条显示效果
+- 改进代码质量和可维护性
+- 增强系统整体稳定性和一致性
+
 ## [0.8.14] - 2025-10-19
 
 ### Added

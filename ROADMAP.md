@@ -2,7 +2,7 @@
 
 This document outlines the planned features and improvements for devtool-rs. The roadmap is subject to change based on community feedback and priorities.
 
-## Current Version: 0.8.14
+## Current Version: 0.8.15
 
 ### Completed ✅
 
@@ -44,6 +44,12 @@ This document outlines the planned features and improvements for devtool-rs. The
   - 移除不必要的全局进度更新调用
   - 优化进度条创建和生命周期管理
   - 彻底修复进度条重复创建问题
+- **Homebrew Progress Bar Fix** (v0.8.15)
+  - 彻底解决 Homebrew 工具执行过程中的进度条重复创建问题
+  - 使用环境变量控制 Homebrew 进度条显示
+  - 优化 Homebrew 命令执行参数
+  - 实现命令执行环境隔离
+  - 显著提升 Homebrew 执行过程中的进度条显示稳定性
 - **Shell Completion Support** (v0.5.6)
   - Comprehensive shell completion for bash, zsh, fish, powershell, elvish, nushell
   - `devtool completion <shell>` command
