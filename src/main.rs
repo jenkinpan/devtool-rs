@@ -92,9 +92,6 @@ async fn execute_parallel_updates(
     // 添加短暂延迟确保进度条显示
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-    // 启动全局进度更新
-    progress_manager.start_global_progress_updates(&tools);
-
     // 使用 Arc<Mutex<>> 来共享进度条管理器
     let progress_manager = Arc::new(Mutex::new(progress_manager));
     let progress_manager_for_finalize = progress_manager.clone();

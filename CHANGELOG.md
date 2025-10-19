@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.14] - 2025-10-19
+
+### Added
+- 进度条重复显示问题的进一步优化
+- 进度条管理逻辑简化
+- 全局进度条实例管理机制
+
+### Changed
+- 进一步优化进度条重复显示问题
+- 简化进度条管理逻辑，移除不必要的全局进度更新调用
+- 优化进度条创建和生命周期管理
+- 改进进度条显示稳定性
+
+### Fixed
+- 彻底修复进度条重复创建问题
+- 优化进度条状态管理
+- 修复进度条显示不一致问题
+- 改进进度条性能表现
+
+### Improved
+- 显著提升进度条显示稳定性
+- 进一步优化用户体验
+- 改进代码质量和可维护性
+- 增强系统整体稳定性
+
 ## [0.8.13] - 2025-10-19
 
 ### Added

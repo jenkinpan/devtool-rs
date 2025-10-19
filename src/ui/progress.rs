@@ -244,6 +244,7 @@ impl ProgressBarManager {
         for tool in tools {
             // 检查是否已存在该工具的进度条，避免重复创建
             if self.progress_bars.contains_key(tool) {
+                // 如果已存在，跳过创建
                 continue;
             }
 
@@ -371,13 +372,15 @@ impl ProgressBarManager {
     }
 
     /// 启动全局进度更新
+    ///
+    /// 这个方法用于启动全局进度更新，确保所有工具都有正确的进度条状态。
+    /// 目前简化实现，避免重复创建进度条。
+    #[allow(dead_code)]
     pub fn start_global_progress_updates(&mut self, tools: &[Tool]) {
-        // 为所有工具启动进度更新
+        // 简化实现：只为执行中的工具启动动画
         for tool in tools {
-            // 检查工具是否在执行状态
             if let Some(state) = self.states.get(tool) {
                 if matches!(state, ProgressState::Executing) {
-                    // 启动动画
                     self.animation_manager.start_animation();
                     self.animation_manager.update_state_time();
                 }

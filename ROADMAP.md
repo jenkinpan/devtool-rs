@@ -2,7 +2,7 @@
 
 This document outlines the planned features and improvements for devtool-rs. The roadmap is subject to change based on community feedback and priorities.
 
-## Current Version: 0.8.13
+## Current Version: 0.8.14
 
 ### Completed ✅
 
@@ -38,6 +38,12 @@ This document outlines the planned features and improvements for devtool-rs. The
   - 统一进度条管理机制
   - 消除所有代码质量警告
   - 显著提升进度条显示稳定性
+- **Progress Bar Duplication Elimination** (v0.8.14)
+  - 进一步优化进度条重复显示问题
+  - 简化进度条管理逻辑
+  - 移除不必要的全局进度更新调用
+  - 优化进度条创建和生命周期管理
+  - 彻底修复进度条重复创建问题
 - **Shell Completion Support** (v0.5.6)
   - Comprehensive shell completion for bash, zsh, fish, powershell, elvish, nushell
   - `devtool completion <shell>` command
