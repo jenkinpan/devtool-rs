@@ -2,7 +2,7 @@
 
 This document outlines the planned features and improvements for devtool-rs. The roadmap is subject to change based on community feedback and priorities.
 
-## Current Version: 0.8.18
+## Current Version: 0.8.19
 
 ### Completed ✅
 
@@ -68,6 +68,12 @@ This document outlines the planned features and improvements for devtool-rs. The
   - 优化输出重定向逻辑，防止进度条输出到终端
   - 实现进度条隔离机制，确保只有一个进度条系统活跃
   - 修复输出重定向机制中的进度条检测逻辑
+- **Progress Bar Global State Management** (v0.8.19)
+  - 彻底修复进度条重复创建问题的根本原因
+  - 实施全局 `created_tools` 集合，使用 `OnceLock` 确保所有 `ProgressBarManager` 实例共享同一个去重集合
+  - 修复 `ProgressBarManager` 去重机制失效的问题
+  - 确保每个工具只创建一个进度条，彻底解决重复显示问题
+  - 改进进度条管理架构，使用全局状态管理
 - **Shell Completion Support** (v0.5.6)
   - Comprehensive shell completion for bash, zsh, fish, powershell, elvish, nushell
   - `devtool completion <shell>` command

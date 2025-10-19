@@ -6,8 +6,19 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::time::Duration;
 use tokio::time::Instant;
+
+/// 全局已创建的工具集合，防止重复创建进度条
+static GLOBAL_CREATED_TOOLS: OnceLock<Arc<std::sync::Mutex<HashSet<Tool>>>> = OnceLock::new();
+
+/// 获取全局已创建的工具集合
+fn get_global_created_tools() -> Arc<std::sync::Mutex<HashSet<Tool>>> {
+    GLOBAL_CREATED_TOOLS
+        .get_or_init(|| Arc::new(std::sync::Mutex::new(HashSet::new())))
+        .clone()
+}
 
 /// 进度条状态枚举
 #[derive(Debug, Clone, PartialEq)]
@@ -229,7 +240,7 @@ impl ProgressBarManager {
             states: HashMap::new(),
             animation_manager,
             instance_count: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
-            created_tools: Arc::new(std::sync::Mutex::new(HashSet::new())),
+            created_tools: get_global_created_tools(),
         }
     }
 

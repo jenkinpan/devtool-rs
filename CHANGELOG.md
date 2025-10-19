@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.19] - 2025-10-19
+
+### Fixed
+- 彻底修复进度条重复创建问题的根本原因
+- 实施全局 `created_tools` 集合，使用 `OnceLock` 确保所有 `ProgressBarManager` 实例共享同一个去重集合
+- 修复 `ProgressBarManager` 去重机制失效的问题
+- 确保每个工具只创建一个进度条，彻底解决重复显示问题
+
+### Changed
+- 升级版本号到0.8.19
+- 改进进度条管理架构，使用全局状态管理
+- 优化进度条生命周期管理机制
+
+### Technical Details
+- 添加全局 `GLOBAL_CREATED_TOOLS` 静态变量
+- 实现 `get_global_created_tools()` 函数
+- 修改 `ProgressBarManager::new()` 使用全局集合
+- 确保所有 `ProgressBarManager` 实例共享同一个去重集合
+
 ## [0.8.18] - 2025-10-19
 
 ### Fixed
