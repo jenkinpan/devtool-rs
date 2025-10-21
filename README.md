@@ -18,6 +18,9 @@ English | [简体中文](README_zh.md)
 - **📊 Detailed upgrade tracking**: Shows exactly what was upgraded with before/after version information
 - **🔍 Smart version detection**: Only performs version comparison when actual upgrades occur, improving performance
 - **📝 Comprehensive logging**: Each step's output is logged for easy troubleshooting
+- **🗂️ Unified log storage**: All log files are stored in a unified location (`~/Library/Caches/devtool/` on macOS, `~/.cache/devtool/` on Linux)
+- **🔍 Organized by tool**: Log files are organized by tool (Homebrew, Rustup, Mise) with timestamped directories
+- **🔗 Latest symlinks**: Each tool directory includes a `latest` symlink pointing to the most recent execution
 - **📋 Execution summary**: Clear summary showing which tools were updated, already latest, or failed
 - **🧪 Dry run mode**: Use `--dry-run` to preview steps without making changes
 - **⚙️ Flexible execution modes**: Choose between parallel (default) or sequential execution with `--sequential`
@@ -103,7 +106,7 @@ Customize `devtool` behavior with these options:
 | `--dry-run`    | `-n`  | Show steps that would be executed without actually running them        |
 | `--verbose`    | `-v`  | Print detailed output for each step during execution                   |
 | `--version`    | `-V`  | Show version information                                               |
-| `--keep-logs`  |       | Keep log files for each step, stored in `~/.cache/devtool/` by default |
+| `--keep-logs`  |       | Keep log files for each step, stored in unified cache directory by default |
 | `--no-banner`  |       | Don't show startup banner                                              |
 | `--compact`    |       | Use more compact output format for non-interactive environments        |
 | `--parallel`   |       | Execute update steps in parallel (default)                             |
@@ -149,6 +152,88 @@ Rust：更新工具链
 - **New installations**: `package: new installation → version`
 - **Toolchain updates**: Shows Rust toolchain version changes
 - **Tool updates**: Shows Mise-managed tool version changes
+
+## 📁 Log Storage System
+
+`devtool` provides a comprehensive log storage system for easy troubleshooting and debugging:
+
+### Unified Log Storage
+
+All log files are stored in a unified location:
+- **macOS**: `~/Library/Caches/devtool/`
+- **Linux**: `~/.cache/devtool/`
+
+### Directory Structure
+
+Logs are organized by tool with timestamped directories:
+
+```
+~/Library/Caches/devtool/
+├── homebrew/
+│   ├── 1761008090/
+│   │   ├── brew_cleanup.log
+│   │   ├── brew_detailed_debug.log
+│   │   ├── brew_outdated.log
+│   │   ├── brew_update.log
+│   │   ├── brew_upgrade.log
+│   │   └── outdated_packages.json
+│   └── latest -> 1761008090/
+├── rustup/
+│   ├── 1761008078/
+│   │   └── rustup_update.log
+│   └── latest -> 1761008078/
+├── mise/
+│   ├── 1761008076/
+│   │   └── mise_up.log
+│   └── latest -> 1761008076/
+└── feedback/
+    └── devtool_feedback_*.md
+```
+
+### Log File Types
+
+Each tool generates specific log files:
+
+- **Homebrew**:
+  - `brew_update.log`: Homebrew update output
+  - `brew_upgrade.log`: Homebrew upgrade output
+  - `brew_cleanup.log`: Homebrew cleanup output
+  - `brew_outdated.log`: Outdated packages detection
+  - `brew_detailed_debug.log`: Detailed debugging information
+  - `outdated_packages.json`: JSON format of outdated packages
+
+- **Rustup**:
+  - `rustup_update.log`: Rustup update output
+
+- **Mise**:
+  - `mise_up.log`: Mise update output
+
+### Using Logs for Troubleshooting
+
+1. **Access latest logs**: Use the `latest` symlink for the most recent execution
+   ```bash
+   ls ~/Library/Caches/devtool/homebrew/latest/
+   ```
+
+2. **View specific log files**: Check individual log files for detailed information
+   ```bash
+   cat ~/Library/Caches/devtool/homebrew/latest/brew_detailed_debug.log
+   ```
+
+3. **Historical logs**: Browse timestamped directories for previous executions
+   ```bash
+   ls ~/Library/Caches/devtool/homebrew/
+   ```
+
+### Enabling Log Storage
+
+Use the `--keep-logs` flag to enable log storage:
+
+```bash
+devtool update --keep-logs
+```
+
+This will save all log files to the unified cache directory for later analysis.
 
 ### Examples
 

@@ -77,12 +77,11 @@ impl SimpleProgressManager {
             let pb = self.multi_progress.add(ProgressBar::new(100));
 
             // 设置进度条样式 - 使用无边框现代化设计
-            pb.set_style(
-                ProgressStyle::default_bar()
-                    .template("{spinner:.green} {bar:20.cyan/blue} {pos}% {msg}")
-                    .unwrap()
-                    .progress_chars("▰▱▰▱"),
-            );
+            if let Ok(style) = ProgressStyle::default_bar()
+                .template("{spinner:.green} {bar:20.cyan/blue} {pos}% {msg}")
+            {
+                pb.set_style(style.progress_chars("▰▱▰▱"));
+            }
 
             pb.set_message(format!("{} 准备中...", tool.display_name()));
             pb.enable_steady_tick(Duration::from_millis(150));
@@ -142,7 +141,20 @@ impl SimpleProgressManager {
         self.progress_bars.contains_key(tool)
     }
 
-    /// 获取进度条数量
+    /// 获取当前活跃的进度条数量
+    ///
+    /// 这个方法用于调试和监控进度条状态，返回当前管理的进度条数量。
+    /// 主要用于测试和调试目的，帮助开发者了解进度条管理器的状态。
+    ///
+    /// # 返回值
+    /// 返回当前活跃的进度条数量
+    ///
+    /// # 示例
+    /// ```rust
+    /// let manager = SimpleProgressManager::new();
+    /// assert_eq!(manager.progress_bar_count(), 0);
+    /// ```
+    #[allow(dead_code)]
     pub fn progress_bar_count(&self) -> usize {
         self.progress_bars.len()
     }

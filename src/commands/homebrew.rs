@@ -10,6 +10,15 @@ use std::path::{Path, PathBuf};
 use crate::commands::upgrade_details::{UpgradeDetail, UpgradeDetails, UpgradeDetailsManager};
 use crate::runner::Runner;
 
+/// 创建调试日志文件的辅助函数
+///
+/// 统一调试日志文件的创建和写入，避免重复代码
+fn write_debug_log(tmpdir: &Path, message: &str) {
+    if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+        let _ = writeln!(debug_file, "{}", message);
+    }
+}
+
 /// Homebrew 过时软件包信息
 #[derive(Debug, Deserialize, Serialize)]
 struct OutdatedPackage {
@@ -42,11 +51,34 @@ struct SimpleOutdatedPackage {
 fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<SimpleOutdatedPackage>> {
     let logfile = tmpdir.join("brew_outdated.log");
 
+    // 添加主函数调试信息
+    write_debug_log(tmpdir, "=== get_outdated_packages 主函数开始 ===");
+    write_debug_log(
+        tmpdir,
+        &format!("时间: {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")),
+    );
+    write_debug_log(tmpdir, &format!("临时目录: {}", tmpdir.display()));
+
     // 尝试主要方法：brew outdated --json
+    write_debug_log(tmpdir, "=== 尝试 JSON 方法 ===");
+
     match get_outdated_packages_json(runner, tmpdir, &logfile) {
         Ok(packages) => {
+            if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                let _ = writeln!(
+                    debug_file,
+                    "JSON 方法成功，发现 {} 个过时软件包",
+                    packages.len()
+                );
+            }
             if !packages.is_empty() {
+                if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                    let _ = writeln!(debug_file, "返回 JSON 方法结果");
+                }
                 return Ok(packages);
+            } else if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log"))
+            {
+                let _ = writeln!(debug_file, "JSON 方法返回空列表，尝试备用方法");
             }
         }
         Err(e) => {
@@ -54,16 +86,35 @@ fn get_outdated_packages(runner: &dyn Runner, tmpdir: &Path) -> Result<Vec<Simpl
             if let Ok(mut file) = File::create(tmpdir.join("brew_errors.log")) {
                 let _ = writeln!(file, "JSON method failed: {}", e);
             }
+            if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                let _ = writeln!(debug_file, "JSON 方法失败: {}，尝试备用方法", e);
+            }
         }
     }
 
     // 备用方法：使用文本格式解析
+    if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+        let _ = writeln!(debug_file, "=== 尝试文本方法 ===");
+    }
+
     match get_outdated_packages_text(runner, tmpdir, &logfile) {
-        Ok(packages) => Ok(packages),
+        Ok(packages) => {
+            if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                let _ = writeln!(
+                    debug_file,
+                    "文本方法成功，发现 {} 个过时软件包",
+                    packages.len()
+                );
+            }
+            Ok(packages)
+        }
         Err(e) => {
             // 如果所有方法都失败，返回空列表而不是错误
             if let Ok(mut file) = File::create(tmpdir.join("brew_errors.log")) {
                 let _ = writeln!(file, "All methods failed: {}", e);
+            }
+            if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                let _ = writeln!(debug_file, "所有方法都失败: {}，返回空列表", e);
             }
             Ok(Vec::new())
         }
@@ -76,36 +127,133 @@ fn get_outdated_packages_json(
     tmpdir: &Path,
     logfile: &Path,
 ) -> Result<Vec<SimpleOutdatedPackage>> {
-    let (_, out) = runner.run("brew outdated --json", logfile, false)?;
-
-    // 添加调试信息
-    if let Ok(mut file) = File::create(tmpdir.join("brew_debug.log")) {
-        let _ = writeln!(file, "Debug: brew outdated --json 输出:");
-        let _ = writeln!(file, "{}", out);
+    // 添加详细的调试信息
+    if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+        let _ = writeln!(debug_file, "=== Homebrew 过时软件包检测调试信息 ===");
+        let _ = writeln!(
+            debug_file,
+            "时间: {}",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")
+        );
+        let _ = writeln!(debug_file, "执行命令: brew outdated --json");
     }
 
-    let outdated: OutdatedPackages = serde_json::from_str(&out)?;
+    let (rc, out) = runner.run("brew outdated --json", logfile, false)?;
+
+    // 记录命令执行结果
+    if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+        let _ = writeln!(debug_file, "命令退出码: {}", rc);
+        let _ = writeln!(debug_file, "输出长度: {} 字符", out.len());
+        let _ = writeln!(debug_file, "原始输出:");
+        let _ = writeln!(debug_file, "{}", out);
+        let _ = writeln!(debug_file, "=== JSON 解析开始 ===");
+    }
+
+    // 检查输出是否为空
+    if out.trim().is_empty() {
+        if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+            let _ = writeln!(debug_file, "警告: brew outdated --json 输出为空");
+        }
+        return Ok(Vec::new());
+    }
+
+    // 尝试解析 JSON
+    let outdated: OutdatedPackages = match serde_json::from_str::<OutdatedPackages>(&out) {
+        Ok(parsed) => {
+            if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                let _ = writeln!(debug_file, "JSON 解析成功");
+                let _ = writeln!(debug_file, "Formulae 数量: {}", parsed.formulae.len());
+                let _ = writeln!(debug_file, "Casks 数量: {}", parsed.casks.len());
+            }
+            parsed
+        }
+        Err(e) => {
+            if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                let _ = writeln!(debug_file, "JSON 解析失败: {}", e);
+                let _ = writeln!(debug_file, "原始输出内容:");
+                let _ = writeln!(debug_file, "{}", out);
+            }
+            return Err(e.into());
+        }
+    };
 
     // 转换格式并合并 formulae 和 casks
     let mut all_outdated = Vec::new();
 
-    for package in outdated.formulae {
+    // 处理 formulae
+    if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+        let _ = writeln!(debug_file, "=== 处理 Formulae ===");
+    }
+
+    for (index, package) in outdated.formulae.iter().enumerate() {
         if let Some(installed_version) = package.installed_versions.first() {
-            all_outdated.push(SimpleOutdatedPackage {
-                name: package.name,
+            let simple_package = SimpleOutdatedPackage {
+                name: package.name.clone(),
                 installed_version: installed_version.clone(),
-                current_version: package.current_version,
-            });
+                current_version: package.current_version.clone(),
+            };
+            all_outdated.push(simple_package);
+
+            if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                let _ = writeln!(
+                    debug_file,
+                    "Formulae[{}]: {} {} -> {}",
+                    index, package.name, installed_version, package.current_version
+                );
+            }
+        } else if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+            let _ = writeln!(
+                debug_file,
+                "警告: Formulae[{}] {} 没有安装版本信息",
+                index, package.name
+            );
         }
     }
 
-    for package in outdated.casks {
+    // 处理 casks
+    if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+        let _ = writeln!(debug_file, "=== 处理 Casks ===");
+    }
+
+    for (index, package) in outdated.casks.iter().enumerate() {
         if let Some(installed_version) = package.installed_versions.first() {
-            all_outdated.push(SimpleOutdatedPackage {
-                name: package.name,
+            let simple_package = SimpleOutdatedPackage {
+                name: package.name.clone(),
                 installed_version: installed_version.clone(),
-                current_version: package.current_version,
-            });
+                current_version: package.current_version.clone(),
+            };
+            all_outdated.push(simple_package);
+
+            if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+                let _ = writeln!(
+                    debug_file,
+                    "Cask[{}]: {} {} -> {}",
+                    index, package.name, installed_version, package.current_version
+                );
+            }
+        } else if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+            let _ = writeln!(
+                debug_file,
+                "警告: Cask[{}] {} 没有安装版本信息",
+                index, package.name
+            );
+        }
+    }
+
+    // 记录最终结果
+    if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+        let _ = writeln!(debug_file, "=== 检测结果汇总 ===");
+        let _ = writeln!(debug_file, "总共发现 {} 个过时软件包", all_outdated.len());
+        if all_outdated.is_empty() {
+            let _ = writeln!(debug_file, "所有软件包都是最新版本");
+        } else {
+            for (index, package) in all_outdated.iter().enumerate() {
+                let _ = writeln!(
+                    debug_file,
+                    "  [{}] {}: {} -> {}",
+                    index, package.name, package.installed_version, package.current_version
+                );
+            }
         }
     }
 
@@ -226,18 +374,24 @@ pub fn brew_upgrade(
         }
     }
 
-    // 如果没有过时软件包，直接返回
+    // 即使没有过时软件包，也执行 brew upgrade 命令
+    // 因为 brew upgrade 可能会执行其他操作（如依赖检查、缓存清理等）
     if outdated_packages.is_empty() {
-        return Ok(("unchanged".to_string(), 0, logfile));
+        if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+            let _ = writeln!(debug_file, "没有过时软件包，但仍执行 brew upgrade 命令");
+        }
     }
 
     // 执行升级
     // 执行升级 - 完全禁用 Homebrew 的进度条显示
-    let (rc_upgrade, out_upgrade) = runner.run(
+    let (rc_upgrade, _out_upgrade) = runner.run(
         "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 brew upgrade --quiet",
         &logfile,
         verbose,
     )?;
+
+    // 读取日志文件获取真正的命令输出
+    let actual_output = std::fs::read_to_string(&logfile).unwrap_or_default();
 
     if rc_upgrade != 0 {
         return Ok(("failed".to_string(), rc_upgrade, logfile));
@@ -245,7 +399,7 @@ pub fn brew_upgrade(
 
     // 检查升级输出，如果没有实际升级，直接返回
     let has_actual_upgrades =
-        out_upgrade.contains("==> Upgrading") || out_upgrade.contains("==> Installing");
+        actual_output.contains("==> Upgrading") || actual_output.contains("==> Installing");
 
     let mut upgrade_details = Vec::new();
 
@@ -292,8 +446,55 @@ pub fn brew_upgrade(
         // 如果之前有过时软件包，即使没有检测到升级详情，也可能有变化
         "changed"
     } else {
-        "unchanged"
+        // 即使没有过时软件包，也要根据 brew upgrade 的实际输出来判断
+        // 如果输出包含 "All formulae and casks are up to date"，说明检查完成
+        if actual_output.contains("All formulae and casks are up to date")
+            || actual_output.contains("Already up-to-date")
+        {
+            "unchanged"
+        } else {
+            // 如果有其他输出，可能执行了其他操作（如依赖检查等）
+            "unchanged"
+        }
     };
+
+    // 添加状态判断的调试信息
+    if let Ok(mut debug_file) = File::create(tmpdir.join("brew_detailed_debug.log")) {
+        let _ = writeln!(debug_file, "=== 状态判断调试 ===");
+        let _ = writeln!(
+            debug_file,
+            "details.has_upgrades(): {}",
+            details.has_upgrades()
+        );
+        let _ = writeln!(debug_file, "has_actual_upgrades: {}", has_actual_upgrades);
+        let _ = writeln!(
+            debug_file,
+            "outdated_packages.len(): {}",
+            outdated_packages.len()
+        );
+        let _ = writeln!(
+            debug_file,
+            "actual_output 长度: {} 字符",
+            actual_output.len()
+        );
+        let _ = writeln!(debug_file, "actual_output 内容: '{}'", actual_output);
+        let _ = writeln!(
+            debug_file,
+            "actual_output 包含 'All formulae and casks are up to date': {}",
+            actual_output.contains("All formulae and casks are up to date")
+        );
+        let _ = writeln!(
+            debug_file,
+            "actual_output 包含 'Already up-to-date': {}",
+            actual_output.contains("Already up-to-date")
+        );
+        let _ = writeln!(
+            debug_file,
+            "actual_output 包含 'up to date': {}",
+            actual_output.contains("up to date")
+        );
+        let _ = writeln!(debug_file, "最终状态: {}", state);
+    }
 
     Ok((state.to_string(), rc_upgrade, logfile))
 }

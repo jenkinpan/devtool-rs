@@ -26,8 +26,10 @@ use commands::{brew_cleanup, brew_update, brew_upgrade, mise_up, rustup_update};
 use i18n::LocalizedStrings;
 use parallel::{ParallelScheduler, TaskResult, Tool};
 use runner::ShellRunner;
+use std::path::Path;
 use ui::colors::{print_banner, print_error, print_info, print_success, print_warning};
 use ui::icons::IconManager;
+use utils::ensure_cache_dir;
 
 /// Get detailed description of what a tool will do
 fn get_tool_description(tool: &Tool) -> String {
@@ -146,12 +148,78 @@ async fn execute_parallel_updates(
     Ok(results)
 }
 
+/// 保存所有日志文件到缓存目录
+fn save_debug_logs(tmpdir: &Path, tool: &Tool) -> Result<()> {
+    use std::fs;
+
+    let cache_dir = ensure_cache_dir()?;
+
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| anyhow::anyhow!("Failed to get system time"))?
+        .as_secs();
+
+    let tool_name = match tool {
+        Tool::Homebrew => "homebrew",
+        Tool::Rustup => "rustup",
+        Tool::Mise => "mise",
+    };
+
+    // 创建工具特定的子目录
+    let tool_dir = cache_dir.join(tool_name);
+    fs::create_dir_all(&tool_dir)?;
+
+    // 创建时间戳子目录
+    let timestamp_dir = tool_dir.join(format!("{}", timestamp));
+    fs::create_dir_all(&timestamp_dir)?;
+
+    // 获取所有日志文件
+    let log_files = get_log_files_for_tool(tool);
+
+    // 复制所有日志文件
+    for log_file in &log_files {
+        let src_path = tmpdir.join(log_file);
+        if src_path.exists() {
+            let dst_path = timestamp_dir.join(log_file);
+            if let Err(e) = fs::copy(&src_path, &dst_path) {
+                eprintln!("Warning: Failed to copy {}: {}", log_file, e);
+            }
+        }
+    }
+
+    // 创建 latest 符号链接
+    let latest_link = tool_dir.join("latest");
+    if latest_link.exists() {
+        fs::remove_file(&latest_link).ok();
+    }
+    std::os::unix::fs::symlink(&timestamp_dir, &latest_link).ok();
+
+    Ok(())
+}
+
+/// 获取工具相关的日志文件列表
+fn get_log_files_for_tool(tool: &Tool) -> Vec<&'static str> {
+    match tool {
+        Tool::Homebrew => vec![
+            "brew_detailed_debug.log",
+            "brew_outdated.log",
+            "brew_update.log",
+            "brew_upgrade.log",
+            "brew_cleanup.log",
+            "brew_errors.log",
+            "outdated_packages.json",
+        ],
+        Tool::Rustup => vec!["rustup_update.log"],
+        Tool::Mise => vec!["mise_up.log"],
+    }
+}
+
 /// Execute a single tool update
 async fn execute_tool_update(
     tool: Tool,
     dry_run: bool,
     verbose: bool,
-    _keep_logs: bool,
+    keep_logs: bool,
     tmpdir: &std::path::Path,
 ) -> Result<TaskResult> {
     let runner = ShellRunner;
@@ -226,6 +294,13 @@ async fn execute_tool_update(
             }
         }
     };
+
+    // 如果启用了 keep_logs，保存调试日志到缓存目录
+    if keep_logs {
+        if let Err(e) = save_debug_logs(tmpdir, &result.tool) {
+            eprintln!("Warning: Failed to save debug logs: {}", e);
+        }
+    }
 
     Ok(result)
 }
@@ -772,11 +847,10 @@ fn handle_feedback_command(
     // 保存反馈到文件
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .map_err(|_| anyhow::anyhow!("Failed to get system time"))?
         .as_secs();
     let filename = format!("devtool_feedback_{}.md", timestamp);
-    let feedback_dir = dirs::home_dir().unwrap().join(".cache").join("devtool");
-    std::fs::create_dir_all(&feedback_dir)?;
+    let feedback_dir = ensure_cache_dir()?;
 
     let feedback_file = feedback_dir.join(&filename);
     std::fs::write(&feedback_file, &feedback_report)?;

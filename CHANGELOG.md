@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.21] - 2025-10-21
+
+### Added
+- **统一日志存储系统**：所有日志文件现在统一保存到 `~/Library/Caches/devtool/` 目录（macOS）或 `~/.cache/devtool/` 目录（Linux）
+- **按工具分类的日志组织**：每个工具（Homebrew、Rustup、Mise）都有独立的子目录
+- **时间戳目录结构**：每次执行创建时间戳子目录，便于追踪历史执行
+- **latest 符号链接**：每个工具目录包含 `latest` 符号链接，指向最新的执行结果
+- **完整的日志保存**：`--keep-logs` 功能现在保存所有输出日志，不仅仅是调试日志
+- **自动目录创建**：系统自动创建所需的目录结构
+
+### Fixed
+- **修复编译警告**：消除了所有编译警告和 lint 问题
+- **改进错误处理**：将 `unwrap()` 替换为更安全的错误处理模式
+- **统一代码风格**：创建辅助函数来统一调试日志处理
+
+### Enhanced
+- **改进的日志管理**：用户现在可以轻松找到所有相关的日志文件
+- **更好的问题诊断**：提供完整的日志文件用于故障排查
+- **统一的缓存目录管理**：所有组件使用相同的缓存目录获取逻辑
+- **代码质量提升**：添加详细的文档注释，改进代码可读性
+
+### Technical Details
+- 新增 `ensure_cache_dir()` 函数，自动创建目录结构
+- 重写 `save_debug_logs()` 函数，支持完整的日志文件保存
+- 实现按工具分类的目录结构：`~/Library/Caches/devtool/{tool}/{timestamp}/`
+- 添加 `latest` 符号链接管理
+- 统一所有组件的缓存目录获取逻辑
+- 修复未使用变量警告，简化可折叠的 else-if 块
+- 改进进度条样式设置的错误处理
+
 ## [0.8.20] - 2025-10-19
 
 ### Fixed
