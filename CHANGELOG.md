@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.22] - 2025-10-23
+
+### Fixed
+- **进度条重复显示问题**：修复了在 Homebrew 升级过程中进度条重复显示的问题
+  - 移除了无效的 `pbar` 参数机制
+  - 实现了基于环境变量的输出抑制控制（`DEVTOOL_SUPPRESS_OUTPUT`）
+  - 在工具执行期间自动启用输出抑制，防止命令输出干扰进度条
+  - 增强了 Homebrew 命令的输出控制，添加 `HOMEBREW_NO_EMOJI` 和 `HOMEBREW_NO_AUTO_UPDATE`
+  - 确保进度条在所有场景下都能流畅显示，不再出现重复行
+
+### Changed
+- **代码清理**：移除所有命令函数中未使用的进度条参数
+  - 移除 `brew_update`, `brew_upgrade`, `brew_cleanup` 函数的 `_pbar` 参数
+  - 移除 `rustup_update` 函数的 `_pbar` 参数
+  - 移除 `mise_up` 函数的 `_pbar` 参数
+  - 简化函数调用，移除无用的 `progress_bar` 变量声明
+- **输出控制机制重构**：从参数传递改为环境变量控制
+  - 新增 `enable_output_suppression()` 和 `disable_output_suppression()` 助手函数
+  - `run_command` 函数检查 `DEVTOOL_SUPPRESS_OUTPUT` 环境变量
+  - 所有命令输出仍完整记录到日志文件中
+
+### Enhanced
+- **改进文档**：为所有命令函数添加了详细的文档注释
+  - 明确说明命令函数不涉及进度条管理
+  - 说明进度条管理在编排层（main.rs）统一处理
+  - 为 `SimpleProgressManager` 添加架构说明和使用示例
+  - 为输出抑制助手函数添加详细文档
+- **代码可维护性提升**：通过移除无用参数，使函数签名更简洁清晰
+- **架构清晰化**：明确了进度条管理的职责边界
+- **用户体验提升**：进度条显示更流畅，终端输出更清晰
+
+### Technical Details
+- 进度条管理完全由 `SimpleProgressManager` 在应用程序编排层处理
+- 命令执行层专注于执行命令并返回结果，不涉及 UI 相关逻辑
+- 使用环境变量 `DEVTOOL_SUPPRESS_OUTPUT` 实现跨层级的输出控制
+- 输出抑制只影响终端显示，所有输出仍完整保存到日志文件
+- 这是内部实现优化，不影响用户使用或外部 API
+
 ## [0.8.21] - 2025-10-21
 
 ### Added

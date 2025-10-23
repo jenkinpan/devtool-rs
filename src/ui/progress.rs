@@ -37,6 +37,37 @@ impl SimpleProgressState {
 }
 
 /// 简化的进度条管理器
+///
+/// 此管理器负责在应用程序编排层统一管理所有工具的进度条显示。
+/// 这是进度条管理的唯一入口点，命令执行函数（如 brew_update, rustup_update 等）
+/// 不应该直接处理进度条，而是由此管理器根据执行结果更新状态。
+///
+/// # 架构说明
+///
+/// 进度条管理遵循以下分层架构：
+/// - **编排层（main.rs）**：创建 SimpleProgressManager，在工具执行前后更新进度条状态
+/// - **命令层（commands/*）**：专注于执行命令并返回结果，不涉及进度条
+/// - **UI层（ui/progress.rs）**：提供进度条的创建、更新和显示功能
+///
+/// # 示例
+///
+/// ```rust
+/// use devtool::ui::progress::{SimpleProgressManager, SimpleProgressState};
+/// use devtool::parallel::Tool;
+///
+/// let mut manager = SimpleProgressManager::new();
+/// let tools = vec![Tool::Homebrew, Tool::Rustup];
+///
+/// // 创建进度条
+/// manager.create_progress_bars(&tools);
+///
+/// // 更新状态
+/// manager.update_state(&Tool::Homebrew, SimpleProgressState::Executing);
+/// manager.update_state(&Tool::Homebrew, SimpleProgressState::Completed);
+///
+/// // 完成所有进度条
+/// manager.finalize_all();
+/// ```
 pub struct SimpleProgressManager {
     multi_progress: MultiProgress,
     progress_bars: HashMap<Tool, ProgressBar>,
@@ -45,6 +76,8 @@ pub struct SimpleProgressManager {
 
 impl SimpleProgressManager {
     /// 创建新的简化进度条管理器
+    ///
+    /// 初始化一个空的进度条管理器，准备管理多个工具的进度显示。
     pub fn new() -> Self {
         Self {
             multi_progress: MultiProgress::new(),
@@ -54,6 +87,16 @@ impl SimpleProgressManager {
     }
 
     /// 为工具创建进度条
+    ///
+    /// 根据工具列表创建对应的进度条。此方法会自动检测是否在交互式终端中运行，
+    /// 在非交互式环境中只记录状态而不显示进度条。
+    ///
+    /// # 参数
+    /// * `tools` - 需要创建进度条的工具列表
+    ///
+    /// # 注意
+    /// - 会自动避免为同一工具重复创建进度条
+    /// - 在非交互式终端（如 CI 环境）中不会显示进度条
     pub fn create_progress_bars(&mut self, tools: &[Tool]) {
         // 检查是否在交互式终端中
         let is_interactive =
@@ -94,6 +137,12 @@ impl SimpleProgressManager {
     }
 
     /// 更新进度条状态
+    ///
+    /// 更新指定工具的进度条状态和显示消息。
+    ///
+    /// # 参数
+    /// * `tool` - 要更新的工具
+    /// * `new_state` - 新的进度状态
     pub fn update_state(&mut self, tool: &Tool, new_state: SimpleProgressState) {
         if let Some(pb) = self.progress_bars.get(tool) {
             let progress = new_state.progress_percentage();
@@ -107,6 +156,9 @@ impl SimpleProgressManager {
     }
 
     /// 完成所有进度条
+    ///
+    /// 根据每个工具的最终状态设置完成消息，并结束进度条显示。
+    /// 此方法应在所有工具执行完成后调用。
     pub fn finalize_all(&mut self) {
         for (tool, pb) in &self.progress_bars {
             match self.states.get(tool) {
@@ -137,6 +189,12 @@ impl SimpleProgressManager {
     }
 
     /// 检查工具是否已有进度条
+    ///
+    /// # 参数
+    /// * `tool` - 要检查的工具
+    ///
+    /// # 返回值
+    /// 如果该工具已有进度条则返回 true，否则返回 false
     pub fn has_progress_bar(&self, tool: &Tool) -> bool {
         self.progress_bars.contains_key(tool)
     }

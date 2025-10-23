@@ -11,6 +11,9 @@ use tempfile::tempdir;
 use ui::progress::{SimpleProgressManager, SimpleProgressState};
 use which::which;
 
+// 导入输出抑制助手函数
+use runner::{disable_output_suppression, enable_output_suppression};
+
 // 模块声明
 mod cli;
 mod commands;
@@ -224,8 +227,8 @@ async fn execute_tool_update(
 ) -> Result<TaskResult> {
     let runner = ShellRunner;
 
-    // 创建一个虚拟的进度条标识，确保输出重定向生效
-    let mut progress_bar = Some(());
+    // 启用输出抑制，防止命令输出干扰进度条显示
+    enable_output_suppression();
 
     let result = if dry_run {
         TaskResult {
@@ -237,9 +240,9 @@ async fn execute_tool_update(
         match tool {
             Tool::Homebrew => {
                 // Execute homebrew update sequence with progress bar isolation
-                let update_result = brew_update(&runner, tmpdir, verbose, &mut progress_bar)?;
-                let upgrade_result = brew_upgrade(&runner, tmpdir, verbose, &mut progress_bar)?;
-                let cleanup_result = brew_cleanup(&runner, tmpdir, verbose, &mut progress_bar)?;
+                let update_result = brew_update(&runner, tmpdir, verbose)?;
+                let upgrade_result = brew_upgrade(&runner, tmpdir, verbose)?;
+                let cleanup_result = brew_cleanup(&runner, tmpdir, verbose)?;
 
                 // Check if any step had changes
                 let has_changes = update_result.0 == "changed"
@@ -263,7 +266,7 @@ async fn execute_tool_update(
                 }
             }
             Tool::Rustup => {
-                let result = rustup_update(&runner, tmpdir, verbose, &mut progress_bar)?;
+                let result = rustup_update(&runner, tmpdir, verbose)?;
                 let has_changes = result.0 == "changed";
                 let output = if has_changes {
                     "Rustup updated".to_string()
@@ -278,7 +281,7 @@ async fn execute_tool_update(
                 }
             }
             Tool::Mise => {
-                let result = mise_up(&runner, tmpdir, verbose, &mut progress_bar)?;
+                let result = mise_up(&runner, tmpdir, verbose)?;
                 let has_changes = result.0 == "changed";
                 let output = if has_changes {
                     "Mise updated".to_string()
@@ -294,6 +297,9 @@ async fn execute_tool_update(
             }
         }
     };
+
+    // 禁用输出抑制，恢复正常输出
+    disable_output_suppression();
 
     // 如果启用了 keep_logs，保存调试日志到缓存目录
     if keep_logs {

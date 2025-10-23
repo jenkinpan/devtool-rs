@@ -294,13 +294,23 @@ fn get_outdated_packages_text(
 ///
 /// 执行 `brew update` 更新 Homebrew 的软件包索引
 ///
+/// 此函数负责执行 Homebrew 的索引更新命令，不涉及进度条管理。
+/// 进度条管理在应用程序的编排层（main.rs）统一处理。
+///
+/// # 参数
+/// * `runner` - 命令执行器
+/// * `tmpdir` - 临时目录路径，用于存储日志文件
+/// * `verbose` - 是否输出详细信息
+///
 /// # 返回值
 /// 返回元组 (状态, 退出码, 日志文件路径)
+/// * 状态: "changed" 或 "unchanged"
+/// * 退出码: 命令的退出状态码
+/// * 日志文件路径: 命令输出的日志文件位置
 pub fn brew_update(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_update.log");
 
@@ -311,9 +321,9 @@ pub fn brew_update(
         verbose,
     )?;
 
-    // 执行更新 - 完全禁用 Homebrew 的进度条显示
+    // 执行更新 - 完全禁用 Homebrew 的进度条显示和额外输出
     let (rc_update, out_update) = runner.run(
-        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 brew update --quiet",
+        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 brew update --quiet",
         &logfile,
         verbose,
     )?;
@@ -343,15 +353,25 @@ pub fn brew_update(
 
 /// Homebrew 升级软件包
 ///
-/// 执行 `brew upgrade` 升级所有过时的软件包
+/// 执行 `brew upgrade` 升级已安装的软件包
+///
+/// 此函数负责执行 Homebrew 的软件包升级命令，不涉及进度条管理。
+/// 进度条管理在应用程序的编排层（main.rs）统一处理。
+///
+/// # 参数
+/// * `runner` - 命令执行器
+/// * `tmpdir` - 临时目录路径，用于存储日志文件和升级详情
+/// * `verbose` - 是否输出详细信息
 ///
 /// # 返回值
 /// 返回元组 (状态, 退出码, 日志文件路径)
+/// * 状态: "changed" 或 "unchanged"，基于是否有软件包被升级
+/// * 退出码: 命令的退出状态码
+/// * 日志文件路径: 命令输出的日志文件位置
 pub fn brew_upgrade(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_upgrade.log");
 
@@ -383,9 +403,9 @@ pub fn brew_upgrade(
     }
 
     // 执行升级
-    // 执行升级 - 完全禁用 Homebrew 的进度条显示
+    // 执行升级 - 完全禁用 Homebrew 的进度条显示和额外输出
     let (rc_upgrade, _out_upgrade) = runner.run(
-        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 brew upgrade --quiet",
+        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet",
         &logfile,
         verbose,
     )?;
@@ -501,22 +521,32 @@ pub fn brew_upgrade(
 
 /// Homebrew 清理旧版本
 ///
-/// 执行 `brew cleanup` 清理旧版本的软件包
+/// 执行 `brew cleanup` 清理旧版本软件包
+///
+/// 此函数负责执行 Homebrew 的清理命令，移除旧版本软件包以释放磁盘空间。
+/// 不涉及进度条管理，进度条管理在应用程序的编排层（main.rs）统一处理。
+///
+/// # 参数
+/// * `runner` - 命令执行器
+/// * `tmpdir` - 临时目录路径，用于存储日志文件
+/// * `verbose` - 是否输出详细信息
 ///
 /// # 返回值
 /// 返回元组 (状态, 退出码, 日志文件路径)
+/// * 状态: "changed"（总是视为已变更）
+/// * 退出码: 命令的退出状态码
+/// * 日志文件路径: 命令输出的日志文件位置
 pub fn brew_cleanup(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("brew_cleanup.log");
 
     // 执行清理
-    // 执行清理 - 完全禁用 Homebrew 的进度条显示
+    // 执行清理 - 完全禁用 Homebrew 的进度条显示和额外输出
     let (rc_cleanup, out_cleanup) = runner.run(
-        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 brew cleanup --quiet",
+        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 brew cleanup --quiet",
         &logfile,
         verbose,
     )?;

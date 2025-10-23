@@ -16,27 +16,27 @@ pub struct ShellRunner;
 
 impl Runner for ShellRunner {
     fn run(&self, cmd: &str, logfile: &Path, verbose: bool) -> Result<(i32, String)> {
-        run_command(cmd, logfile, verbose, &mut None)
+        run_command(cmd, logfile, verbose)
     }
 }
 
 /// 执行 shell 命令
 ///
+/// 此函数执行 shell 命令并捕获其输出到日志文件。
+/// 输出到终端的行为由 `DEVTOOL_SUPPRESS_OUTPUT` 环境变量控制。
+///
 /// # 参数
-/// * `cmd` - 要执行的命令
+/// * `cmd` - 要执行的命令字符串
 /// * `logfile` - 日志文件路径
-/// * `verbose` - 是否输出详细信息
-/// * `pbar` - 可选的进度条
+/// * `verbose` - 是否打印详细输出（当未设置输出抑制时）
+///
+/// # 环境变量
+/// * `DEVTOOL_SUPPRESS_OUTPUT` - 设置为 "1" 或 "true" 时抑制终端输出
 ///
 /// # 返回
 /// * `Ok((exit_code, output))` - 成功时返回退出码和输出
 /// * `Err(error)` - 失败时返回错误
-pub fn run_command(
-    cmd: &str,
-    logfile: &Path,
-    verbose: bool,
-    pbar: &mut Option<()>,
-) -> Result<(i32, String)> {
+pub fn run_command(cmd: &str, logfile: &Path, verbose: bool) -> Result<(i32, String)> {
     // 创建日志文件，使用 Arc<Mutex<..>> 在多线程间共享
     let file = File::create(logfile).with_context(|| format!("create logfile {:?}", logfile))?;
     if verbose {
@@ -54,18 +54,16 @@ pub fn run_command(
     let shared_file = Arc::new(Mutex::new(file));
     let mut handles = Vec::new();
 
-    // 判断当前是否有活动的进度条
-    let has_bar = pbar.as_ref().is_some();
-
-    // 强制禁用所有输出到终端，防止进度条重复显示
-    let force_no_output = has_bar;
+    // 检查环境变量以确定是否应该抑制输出
+    let suppress_output = std::env::var("DEVTOOL_SUPPRESS_OUTPUT")
+        .map(|v| v == "1" || v.to_lowercase() == "true")
+        .unwrap_or(false);
 
     // 为 stdout 创建读取线程
     if let Some(stdout_rd) = child.stdout.take() {
         let f = Arc::clone(&shared_file);
         let verbose_flag = verbose;
-        let has_bar_flag = has_bar;
-        let force_no_output_flag = force_no_output;
+        let suppress_flag = suppress_output;
         let h = thread::spawn(move || {
             let mut rd = stdout_rd;
             let mut buf = [0u8; 4096];
@@ -78,9 +76,8 @@ pub fn run_command(
                             let _ = fh.write_all(&buf[..n]);
                             let _ = fh.flush();
                         }
-                        // 当详细模式开启且没有进度条时，输出到终端
-                        // 当存在进度条时，完全禁止输出到终端，防止进度条重复显示
-                        if verbose_flag && !has_bar_flag && !force_no_output_flag {
+                        // 当详细模式开启且未设置输出抑制时，输出到终端
+                        if verbose_flag && !suppress_flag {
                             let _ = io::stdout().write_all(&buf[..n]);
                             let _ = io::stdout().flush();
                         }
@@ -96,8 +93,7 @@ pub fn run_command(
     if let Some(stderr_rd) = child.stderr.take() {
         let f = Arc::clone(&shared_file);
         let verbose_flag = verbose;
-        let has_bar_flag = has_bar;
-        let force_no_output_flag = force_no_output;
+        let suppress_flag = suppress_output;
         let h = thread::spawn(move || {
             let mut rd = stderr_rd;
             let mut buf = [0u8; 4096];
@@ -109,8 +105,8 @@ pub fn run_command(
                             let _ = fh.write_all(&buf[..n]);
                             let _ = fh.flush();
                         }
-                        // 当存在进度条时，完全禁止输出到终端，防止进度条重复显示
-                        if verbose_flag && !has_bar_flag && !force_no_output_flag {
+                        // 当详细模式开启且未设置输出抑制时，输出到终端
+                        if verbose_flag && !suppress_flag {
                             let _ = io::stdout().write_all(&buf[..n]);
                             let _ = io::stdout().flush();
                         }
@@ -142,6 +138,63 @@ pub fn run_command(
     Ok((rc, short))
 }
 
+/// 启用输出抑制
+///
+/// 设置环境变量以抑制命令输出到终端。
+/// 这在显示进度条时特别有用，可以防止命令输出干扰进度条显示。
+///
+/// # 注意
+/// 所有命令输出仍然会被写入日志文件，只是不会显示在终端上。
+///
+/// # 示例
+/// ```no_run
+/// use devtool::runner::enable_output_suppression;
+///
+/// enable_output_suppression();
+/// // 执行命令...
+/// // 命令输出不会显示在终端上
+/// ```
+pub fn enable_output_suppression() {
+    std::env::set_var("DEVTOOL_SUPPRESS_OUTPUT", "1");
+}
+
+/// 禁用输出抑制
+///
+/// 移除输出抑制环境变量，允许命令输出显示到终端。
+///
+/// # 示例
+/// ```no_run
+/// use devtool::runner::{enable_output_suppression, disable_output_suppression};
+///
+/// enable_output_suppression();
+/// // 执行命令...
+/// disable_output_suppression();
+/// // 后续命令的输出会正常显示
+/// ```
+pub fn disable_output_suppression() {
+    std::env::remove_var("DEVTOOL_SUPPRESS_OUTPUT");
+}
+
+/// 检查输出抑制是否已启用
+///
+/// # 返回
+/// 如果输出抑制已启用则返回 `true`，否则返回 `false`
+///
+/// # 示例
+/// ```no_run
+/// use devtool::runner::is_output_suppressed;
+///
+/// if is_output_suppressed() {
+///     println!("输出当前被抑制");
+/// }
+/// ```
+#[allow(dead_code)]
+pub fn is_output_suppressed() -> bool {
+    std::env::var("DEVTOOL_SUPPRESS_OUTPUT")
+        .map(|v| v == "1" || v.to_lowercase() == "true")
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,7 +205,7 @@ mod tests {
         let tmp = tempdir().unwrap();
         let logfile = tmp.path().join("test.log");
 
-        let result = run_command("echo 'test'", &logfile, false, &mut None);
+        let result = run_command("echo 'test'", &logfile, false);
         assert!(result.is_ok());
 
         let (rc, output) = result.unwrap();
@@ -165,7 +218,7 @@ mod tests {
         let tmp = tempdir().unwrap();
         let logfile = tmp.path().join("test.log");
 
-        let result = run_command("exit 1", &logfile, false, &mut None);
+        let result = run_command("exit 1", &logfile, false);
         assert!(result.is_ok());
 
         let (rc, _) = result.unwrap();

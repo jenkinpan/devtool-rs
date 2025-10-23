@@ -189,15 +189,117 @@ fn extract_rust_version(version_output: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+/// 检测版本变化
+///
+/// 比较升级前后的工具链版本信息，检测是否有版本变化或新安装的工具链
+///
+/// # 参数
+/// * `before` - 升级前的工具链版本列表
+/// * `after` - 升级后的工具链版本列表
+///
+/// # 返回值
+/// 返回 `true` 如果检测到版本变化或新安装的工具链，否则返回 `false`
+fn detect_version_changes(before: &[ToolchainVersion], after: &[ToolchainVersion]) -> bool {
+    // 检查现有工具链版本变化
+    for before_tc in before {
+        if let Some(after_tc) = after.iter().find(|tc| tc.name == before_tc.name) {
+            if before_tc.version != after_tc.version {
+                return true;
+            }
+        }
+    }
+
+    // 检查新安装的工具链
+    for after_tc in after {
+        if !before.iter().any(|tc| tc.name == after_tc.name) {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// 检测输出文本中的更新指示
+///
+/// 分析 rustup update 命令的输出文本，检测是否包含更新指示关键词
+///
+/// # 参数
+/// * `output` - rustup update 命令的输出文本
+///
+/// # 返回值
+/// 返回 `true` 如果检测到更新指示，否则返回 `false`
+fn detect_output_indicators(output: &str) -> bool {
+    let out_text = output.to_lowercase();
+
+    // 首先检查是否明确表示无更新
+    if out_text.contains("unchanged") || out_text.contains("up to date") {
+        return false;
+    }
+
+    let update_indicators = [
+        "updated",
+        "upgraded",
+        "installed",
+        "downloaded",
+        "installing",
+        "downloading",
+    ];
+
+    // 检查更新指示关键词
+    if update_indicators
+        .iter()
+        .any(|indicator| out_text.contains(indicator))
+    {
+        return true;
+    }
+
+    // 检查箭头符号（但排除"up to date"中的"to"）
+    if out_text.contains("->") || out_text.contains("→") {
+        return true;
+    }
+
+    // 检查"from"和"to"的组合（版本变化指示）
+    if out_text.contains("from") && out_text.contains("to") && !out_text.contains("up to date") {
+        return true;
+    }
+
+    false
+}
+
+/// 综合判断升级状态
+///
+/// 结合版本比较和输出文本检测，提供可靠的升级状态判断
+///
+/// # 参数
+/// * `versions_before` - 升级前版本信息
+/// * `versions_after` - 升级后版本信息
+/// * `output` - 命令输出文本
+///
+/// # 返回值
+/// 返回 `true` 如果检测到升级，否则返回 `false`
+fn determine_upgrade_status(
+    versions_before: &[ToolchainVersion],
+    versions_after: &[ToolchainVersion],
+    output: &str,
+) -> bool {
+    let has_version_changes = detect_version_changes(versions_before, versions_after);
+    let has_output_indicators = detect_output_indicators(output);
+
+    // 版本变化优先，输出指示作为辅助验证
+    has_version_changes || has_output_indicators
+}
+
 /// Rustup 更新所有工具链
 ///
 /// 执行 `rustup update` 更新所有已安装的 Rust 工具链
 ///
+/// 此函数负责执行 Rustup 的工具链更新命令，不涉及进度条管理。
+/// 进度条管理在应用程序的编排层（main.rs）统一处理。
+///
 /// # 参数
 /// * `runner` - 命令执行器
-/// * `tmpdir` - 临时目录，用于存储日志
+/// * `tmpdir` - 临时目录，用于存储日志和版本信息
 /// * `verbose` - 是否输出详细信息
-/// * `pbar` - 可选的进度条
 ///
 /// # 返回值
 /// 返回元组 (状态, 退出码, 日志文件路径)
@@ -208,7 +310,6 @@ pub fn rustup_update(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("rustup_update.log");
 
@@ -222,16 +323,15 @@ pub fn rustup_update(
         return Ok(("failed".to_string(), rc, logfile));
     }
 
-    // 检查输出中是否包含更新标记，如果没有实际更新，直接返回
-    let out_text = out.to_lowercase();
-    let is_unchanged = out_text.contains("unchanged") || out_text.contains("up to date");
+    // 始终获取升级后的版本信息，不依赖输出文本检测
+    let versions_after = get_toolchain_versions_json(runner, tmpdir)?;
+
+    // 使用新的综合检测逻辑判断是否有升级
+    let has_upgrade = determine_upgrade_status(&versions_before, &versions_after, &out);
 
     let mut upgrade_details = Vec::new();
 
-    if !is_unchanged {
-        // 只有在有实际更新时才检查更新后的版本
-        let versions_after = get_toolchain_versions_json(runner, tmpdir)?;
-
+    if has_upgrade {
         // 比较版本变化，生成升级详情
         for before_tc in &versions_before {
             if let Some(after_tc) = versions_after.iter().find(|tc| tc.name == before_tc.name) {
@@ -265,7 +365,7 @@ pub fn rustup_update(
         let _ = UpgradeDetailsManager::save_upgrade_details(&details, tmpdir, "rustup");
     }
 
-    let state = if is_unchanged { "unchanged" } else { "changed" };
+    let state = if has_upgrade { "changed" } else { "unchanged" };
 
     Ok((state.to_string(), rc, logfile))
 }
@@ -300,5 +400,110 @@ mod tests {
         let output = "";
         let result = extract_rust_version(output);
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_detect_version_changes_with_version_upgrade() {
+        let before = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        let after = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.71.0".to_string(),
+        }];
+        assert!(detect_version_changes(&before, &after));
+    }
+
+    #[test]
+    fn test_detect_version_changes_with_new_installation() {
+        let before = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        let after = vec![
+            ToolchainVersion {
+                name: "stable".to_string(),
+                version: "1.70.0".to_string(),
+            },
+            ToolchainVersion {
+                name: "nightly".to_string(),
+                version: "1.72.0".to_string(),
+            },
+        ];
+        assert!(detect_version_changes(&before, &after));
+    }
+
+    #[test]
+    fn test_detect_version_changes_no_changes() {
+        let before = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        let after = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        assert!(!detect_version_changes(&before, &after));
+    }
+
+    #[test]
+    fn test_detect_output_indicators_with_updates() {
+        let output = "info: downloading component 'rustc' for 'stable-x86_64-apple-darwin'\ninfo: installing component 'rustc' for 'stable-x86_64-apple-darwin'";
+        assert!(detect_output_indicators(output));
+    }
+
+    #[test]
+    fn test_detect_output_indicators_with_arrows() {
+        let output = "stable-x86_64-apple-darwin updated -> 1.71.0";
+        assert!(detect_output_indicators(output));
+    }
+
+    #[test]
+    fn test_detect_output_indicators_no_updates() {
+        let output = "info: all toolchains are up to date";
+        assert!(!detect_output_indicators(output));
+    }
+
+    #[test]
+    fn test_determine_upgrade_status_with_version_changes() {
+        let before = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        let after = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.71.0".to_string(),
+        }];
+        let output = "info: all toolchains are up to date";
+        assert!(determine_upgrade_status(&before, &after, output));
+    }
+
+    #[test]
+    fn test_determine_upgrade_status_with_output_indicators() {
+        let before = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        let after = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        let output = "info: downloading component 'rustc'";
+        assert!(determine_upgrade_status(&before, &after, output));
+    }
+
+    #[test]
+    fn test_determine_upgrade_status_no_changes() {
+        let before = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        let after = vec![ToolchainVersion {
+            name: "stable".to_string(),
+            version: "1.70.0".to_string(),
+        }];
+        let output = "info: all toolchains are up to date";
+        assert!(!determine_upgrade_status(&before, &after, output));
     }
 }

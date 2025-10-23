@@ -226,11 +226,13 @@ fn parse_mise_versions_simple(output: &str) -> HashMap<String, String> {
 ///
 /// 执行 `mise up` 更新 Mise 管理的所有工具
 ///
+/// 此函数负责执行 Mise 的工具更新命令，不涉及进度条管理。
+/// 进度条管理在应用程序的编排层（main.rs）统一处理。
+///
 /// # 参数
 /// * `runner` - 命令执行器
-/// * `tmpdir` - 临时目录，用于存储日志
+/// * `tmpdir` - 临时目录，用于存储日志和版本信息
 /// * `verbose` - 是否输出详细信息
-/// * `_pbar` - 可选的进度条（当前未使用）
 ///
 /// # 返回值
 /// 返回元组 (状态, 退出码, 日志文件路径)
@@ -241,7 +243,6 @@ pub fn mise_up(
     runner: &dyn Runner,
     tmpdir: &Path,
     verbose: bool,
-    _pbar: &mut Option<()>,
 ) -> Result<(String, i32, PathBuf)> {
     let logfile = tmpdir.join("mise_up.log");
 
