@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.23] - 2025-10-23
+
+### Fixed
+- **进度条重复显示问题（最终修复）**：彻底解决了 Homebrew 执行过程中进度条重复显示的问题
+  - 移除了进度条的 `enable_steady_tick()` 动画，避免持续刷新导致的视觉重复
+  - 简化进度条样式，移除 spinner 动画，仅在状态变化时更新
+  - 进度条现在只在关键状态转换时更新（准备中 → 执行中 → 完成/失败）
+  - 增强 Homebrew 命令的输出隔离，添加 `HOMEBREW_NO_ENV_HINTS=1` 环境变量
+  - 添加 `2>&1` 重定向确保所有 stderr 输出都被捕获到日志文件
+
+### Changed
+- **进度条样式优化**：
+  - 模板从 `"{spinner:.green} {bar:20.cyan/blue} {pos}% {msg}"` 简化为 `"{bar:20.cyan/blue} {pos}% {msg}"`
+  - 进度字符从 `"▰▱▰▱"` 改为 `"▰▱ "`，提供更清晰的视觉效果
+  - 使用 `set_position()` 替代 `tick()` 进行初始化，减少不必要的渲染
+- **输出抑制增强**：所有 Homebrew 命令现在完全隔离终端输出
+  - `brew update`: 添加 `HOMEBREW_NO_ENV_HINTS=1 2>&1`
+  - `brew upgrade`: 添加 `HOMEBREW_NO_ENV_HINTS=1 2>&1`
+  - `brew cleanup`: 添加 `HOMEBREW_NO_ENV_HINTS=1 2>&1`
+
+### Enhanced
+- **用户体验提升**：进度条显示更稳定、更清晰，完全消除视觉重复
+- **性能优化**：减少不必要的进度条刷新，降低 CPU 使用率
+- **代码清理**：移除未使用的 `std::time::Duration` 导入
+
+### Technical Details
+- 进度条不再使用持续动画，仅在状态变化时更新（0% → 50% → 100%）
+- 这种方式在保持良好用户反馈的同时，避免了与命令输出的冲突
+- 所有 Homebrew 输出仍然完整记录到日志文件中，只是不显示在终端上
+- 修复后的进度条在所有场景下都保持稳定的三条进度条显示
+
 ## [0.8.22] - 2025-10-23
 
 ### Fixed

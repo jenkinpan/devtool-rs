@@ -323,7 +323,7 @@ pub fn brew_update(
 
     // 执行更新 - 完全禁用 Homebrew 的进度条显示和额外输出
     let (rc_update, out_update) = runner.run(
-        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 brew update --quiet",
+        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 brew update --quiet 2>&1",
         &logfile,
         verbose,
     )?;
@@ -405,7 +405,7 @@ pub fn brew_upgrade(
     // 执行升级
     // 执行升级 - 完全禁用 Homebrew 的进度条显示和额外输出
     let (rc_upgrade, _out_upgrade) = runner.run(
-        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet",
+        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 brew upgrade --quiet 2>&1",
         &logfile,
         verbose,
     )?;
@@ -546,7 +546,7 @@ pub fn brew_cleanup(
     // 执行清理
     // 执行清理 - 完全禁用 Homebrew 的进度条显示和额外输出
     let (rc_cleanup, out_cleanup) = runner.run(
-        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 brew cleanup --quiet",
+        "HOMEBREW_NO_PROGRESS=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_INSECURE_REDIRECT=1 HOMEBREW_NO_EMOJI=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 brew cleanup --quiet 2>&1",
         &logfile,
         verbose,
     )?;

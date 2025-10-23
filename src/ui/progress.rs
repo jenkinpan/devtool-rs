@@ -2,7 +2,6 @@ use super::icons::IconManager;
 use crate::parallel::Tool;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::collections::HashMap;
-use std::time::Duration;
 
 /// 简化的进度条状态枚举
 #[derive(Debug, Clone, PartialEq)]
@@ -119,16 +118,15 @@ impl SimpleProgressManager {
 
             let pb = self.multi_progress.add(ProgressBar::new(100));
 
-            // 设置进度条样式 - 使用无边框现代化设计
-            if let Ok(style) = ProgressStyle::default_bar()
-                .template("{spinner:.green} {bar:20.cyan/blue} {pos}% {msg}")
+            // 设置进度条样式 - 使用简化设计，移除 spinner 避免视觉重复
+            if let Ok(style) =
+                ProgressStyle::default_bar().template("{bar:20.cyan/blue} {pos}% {msg}")
             {
-                pb.set_style(style.progress_chars("▰▱▰▱"));
+                pb.set_style(style.progress_chars("▰▱ "));
             }
 
             pb.set_message(format!("{} 准备中...", tool.display_name()));
-            pb.enable_steady_tick(Duration::from_millis(150));
-            pb.tick(); // 立即显示进度条
+            pb.set_position(0);
 
             self.progress_bars.insert(tool.clone(), pb);
             self.states
@@ -150,7 +148,6 @@ impl SimpleProgressManager {
 
             pb.set_position(progress);
             pb.set_message(message);
-            pb.tick(); // 强制更新显示
         }
         self.states.insert(tool.clone(), new_state);
     }
